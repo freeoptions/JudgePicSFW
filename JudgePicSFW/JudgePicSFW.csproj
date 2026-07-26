@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\JudgePicSFW.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.24.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\JudgePicSFW.ico" />
+    <Resource Include="Assets\JudgePicSFW.png" />
+    <Resource Include="Assets\info-local.png" />
+    <Content Include="PersonalAiTools\**\*.*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <EmbeddedResource Include="PersonalAiTools\install_personal_ai_env.ps1" />
+    <EmbeddedResource Include="PersonalAiTools\predict_personal_lora.py" />
+    <EmbeddedResource Include="PersonalAiTools\requirements.txt" />
+    <EmbeddedResource Include="PersonalAiTools\train_personal_lora.py" />
+  </ItemGroup>
+
+</Project>
