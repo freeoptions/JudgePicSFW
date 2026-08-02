@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Text;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using ImageMagick;
 using JudgePicSFW.Models;
 
 namespace JudgePicSFW.Services;
@@ -17,6 +18,8 @@ public sealed class ImageFingerprintService
         ".bmp",
         ".gif",
         ".webp",
+        ".heic",
+        ".heif",
     };
 
     public bool IsSupportedImage(string path)
@@ -27,8 +30,40 @@ public sealed class ImageFingerprintService
     public Task<ImageFingerprint> CreateFingerprintAsync(string filePath, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        return Task.Run(
+            () => ImageDecodeCacheService.RequiresDedicatedDecoder(filePath)
+                ? CreateDedicatedDecoderFingerprint(filePath, cancellationToken)
+                : CreateWpfFingerprint(filePath, cancellationToken),
+            cancellationToken);
+    }
+
+    private static ImageFingerprint CreateDedicatedDecoderFingerprint(string filePath, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         var fileInfo = new FileInfo(filePath);
 
+        using var image = new MagickImage(filePath);
+        image.AutoOrient();
+        var width = checked((int)image.Width);
+        var height = checked((int)image.Height);
+        var thumbnailGeometry = new MagickGeometry(8u, 8u)
+        {
+            IgnoreAspectRatio = true,
+        };
+        image.Resize(thumbnailGeometry);
+        image.Format = MagickFormat.Gray;
+        var pixels = image.ToByteArray(MagickFormat.Gray);
+        if (pixels.Length < 64)
+        {
+            throw new InvalidDataException("Dedicated image decoder did not return a valid thumbnail.");
+        }
+
+        return BuildFingerprint(fileInfo, width, height, pixels[..64], cancellationToken);
+    }
+
+    private static ImageFingerprint CreateWpfFingerprint(string filePath, CancellationToken cancellationToken)
+    {
+        var fileInfo = new FileInfo(filePath);
         int width;
         int height;
         using (var metadataStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, FileOptions.SequentialScan))
@@ -62,6 +97,17 @@ public sealed class ImageFingerprintService
 
         var pixels = new byte[64];
         grayscaleBitmap.CopyPixels(pixels, 8, 0);
+        return BuildFingerprint(fileInfo, width, height, pixels, cancellationToken);
+    }
+
+    private static ImageFingerprint BuildFingerprint(
+        FileInfo fileInfo,
+        int width,
+        int height,
+        byte[] pixels,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
         var total = 0;
         for (var index = 0; index < pixels.Length; index++)
@@ -88,14 +134,14 @@ public sealed class ImageFingerprintService
         cancellationToken.ThrowIfCancellationRequested();
         var contentId = BuildFastContentId(fileInfo.Length, width, height, averageHashBits);
 
-        return Task.FromResult(new ImageFingerprint
+        return new ImageFingerprint
         {
             ContentId = contentId,
             AverageHash = hashBuilder.ToString(),
             AverageHashBits = averageHashBits,
             Width = width,
             Height = height,
-        });
+        };
     }
 
     public ulong ParseAverageHashBits(string value)

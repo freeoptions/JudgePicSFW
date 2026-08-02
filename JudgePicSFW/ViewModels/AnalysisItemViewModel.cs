@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using JudgePicSFW.Models;
+using JudgePicSFW.Services;
 
 namespace JudgePicSFW.ViewModels;
 
@@ -10,6 +11,7 @@ public sealed class AnalysisItemViewModel : ObservableObject
 {
     private const int PreviewDecodePixelWidth = 420;
 
+    private readonly ImageDecodeCacheService? _imageDecodeCacheService;
     private ImageLabel _currentLabel;
     private LabelOrigin _labelOrigin;
     private double _confidence;
@@ -22,8 +24,9 @@ public sealed class AnalysisItemViewModel : ObservableObject
     private BitmapImage? _previewImage;
     private int _previewLoadVersion;
 
-    public AnalysisItemViewModel(AnalysisRecord record)
+    public AnalysisItemViewModel(AnalysisRecord record, ImageDecodeCacheService? imageDecodeCacheService = null)
     {
+        _imageDecodeCacheService = imageDecodeCacheService;
         FilePath = record.FilePath;
         FileName = record.FileName;
         ContentId = record.ContentId;
@@ -298,10 +301,65 @@ public sealed class AnalysisItemViewModel : ObservableObject
         }
 
         var loadVersion = Interlocked.Increment(ref _previewLoadVersion);
+        var filePath = FilePath;
+        if (ImageDecodeCacheService.RequiresDedicatedDecoder(filePath))
+        {
+            if (_imageDecodeCacheService is null)
+            {
+                return;
+            }
+
+            var cachedPath = _imageDecodeCacheService.TryGetCachedJpegPath(filePath, PreviewDecodePixelWidth);
+            if (cachedPath is null)
+            {
+                _ = LoadDedicatedPreviewAfterDecodeAsync(filePath, loadVersion, cancellationToken);
+                return;
+            }
+
+            filePath = cachedPath;
+        }
+
         try
         {
-            var filePath = FilePath;
             var bitmap = await Task.Run(() => CreatePreviewBitmap(filePath, cancellationToken), cancellationToken).ConfigureAwait(true);
+            if (cancellationToken.IsCancellationRequested || loadVersion != _previewLoadVersion)
+            {
+                return;
+            }
+
+            PreviewImage = bitmap;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch
+        {
+            if (!cancellationToken.IsCancellationRequested && loadVersion == _previewLoadVersion)
+            {
+                PreviewImage = null;
+            }
+        }
+    }
+
+    private async Task LoadDedicatedPreviewAfterDecodeAsync(
+        string filePath,
+        int loadVersion,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var cachedPath = await _imageDecodeCacheService!
+                .QueuePreviewDecodeAsync(filePath, cancellationToken)
+                .ConfigureAwait(true);
+            if (string.IsNullOrWhiteSpace(cachedPath) ||
+                cancellationToken.IsCancellationRequested ||
+                loadVersion != _previewLoadVersion)
+            {
+                return;
+            }
+
+            var bitmap = await Task.Run(() => CreatePreviewBitmap(cachedPath, cancellationToken), cancellationToken)
+                .ConfigureAwait(true);
             if (cancellationToken.IsCancellationRequested || loadVersion != _previewLoadVersion)
             {
                 return;

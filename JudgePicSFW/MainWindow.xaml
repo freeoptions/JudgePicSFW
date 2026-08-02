@@ -26,14 +26,97 @@
         RenderOptions.ClearTypeHint="Enabled"
         PreviewKeyDown="OnWindowPreviewKeyDown">
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="44"
+        <shell:WindowChrome CaptionHeight="50"
                             CornerRadius="0"
                             GlassFrameThickness="0"
                             ResizeBorderThickness="6" />
     </shell:WindowChrome.WindowChrome>
+    <Window.Resources>
+        <DataTemplate x:Key="CompactWorkspaceFolderTemplate"
+                      DataType="{x:Type viewModels:WorkspaceFolderItemViewModel}">
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource CompactFolderRowBorderStyle}">
+                        <Setter Property="Background" Value="{StaticResource SurfaceMutedBrush}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
+                        <Setter Property="Opacity" Value="0.78" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                <Setter Property="Background" Value="{StaticResource SelectionBrush}" />
+                                <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+                                <Setter Property="Opacity" Value="1" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="26" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Viewbox Width="19" Height="16" VerticalAlignment="Center">
+                        <Canvas Width="24" Height="20">
+                            <Path Data="M2,5 H9 L11,7 H22 V18 H2 Z"
+                                  Fill="#F7B928"
+                                  Stroke="#E9A814"
+                                  StrokeThickness="0.8"
+                                  StrokeLineJoin="Round" />
+                            <Path Data="M2,5 V3 H9 L11,5"
+                                  Fill="#FFD56A"
+                                  Stroke="#E9A814"
+                                  StrokeThickness="0.8"
+                                  StrokeLineJoin="Round" />
+                        </Canvas>
+                    </Viewbox>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding FolderName}"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="NoWrap" />
+                        <TextBlock Margin="0,2,0,0"
+                                   Foreground="{StaticResource InkMutedBrush}"
+                                   FontSize="10.5"
+                                   Text="{Binding FolderPath}"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="NoWrap"
+                                   ToolTip="{Binding FolderPath}" />
+                    </StackPanel>
+                    <Button Grid.Column="2"
+                            MinWidth="52"
+                            Padding="8,4"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource MiniOutlineButtonStyle}"
+                            Command="{Binding DataContext.ActivateWorkspaceFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}"
+                            Content="{Binding ActiveStateText}" />
+                    <Button Grid.Column="4"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource IconOnlyButtonStyle}"
+                            Command="{Binding DataContext.RemoveWorkspaceFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}"
+                            ToolTip="移除文件夹">
+                        <Viewbox Width="13" Height="13">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M7,7 L17,17 M17,7 L7,17"
+                                      Fill="Transparent"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="44" />
+            <RowDefinition Height="50" />
             <RowDefinition Height="*" />
             <RowDefinition Height="30" />
         </Grid.RowDefinitions>
@@ -48,12 +131,12 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Margin="14,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Image Width="24"
-                           Height="24"
+                <StackPanel Margin="16,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Width="26"
+                           Height="26"
                            Source="Assets/JudgePicSFW.png"
                            Stretch="Uniform" />
-                    <TextBlock Margin="10,0,0,0"
+                    <TextBlock Margin="9,0,0,0"
                                VerticalAlignment="Center"
                                FontFamily="{StaticResource HeadingFontFamily}"
                                FontSize="16"
@@ -63,47 +146,79 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Width="46"
-                            Height="44"
+                             Height="50"
                             Padding="0"
                             Background="{StaticResource SurfaceBrush}"
-                            BorderThickness="0"
-                            Foreground="{StaticResource InkBrush}"
-                            Click="OnMinimizeButtonClick"
-                            Content="─" />
+                             BorderThickness="0"
+                             Foreground="{StaticResource InkBrush}"
+                             Click="OnMinimizeButtonClick">
+                        <Viewbox Width="13" Height="13">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M5,12 H19"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1.6"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
                     <Button Width="46"
-                            Height="44"
+                             Height="50"
                             Padding="0"
                             Background="{StaticResource SurfaceBrush}"
-                            BorderThickness="0"
-                            Foreground="{StaticResource InkBrush}"
-                            Click="OnMaximizeRestoreButtonClick"
-                            Content="□" />
+                             BorderThickness="0"
+                             Foreground="{StaticResource InkBrush}"
+                             Click="OnMaximizeRestoreButtonClick">
+                        <Viewbox Width="13" Height="13">
+                            <Canvas Width="24" Height="24">
+                                <Rectangle Canvas.Left="5.5"
+                                           Canvas.Top="5.5"
+                                           Width="13"
+                                           Height="13"
+                                           RadiusX="1"
+                                           RadiusY="1"
+                                           Fill="Transparent"
+                                           Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           StrokeThickness="1.6" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
                     <Button Width="52"
-                            Height="44"
+                             Height="50"
                             Padding="0"
                             Background="{StaticResource SurfaceBrush}"
-                            BorderThickness="0"
-                            Foreground="{StaticResource InkBrush}"
-                            Click="OnCloseButtonClick"
-                            Content="×" />
+                             BorderThickness="0"
+                             Foreground="{StaticResource InkBrush}"
+                             Click="OnCloseButtonClick">
+                        <Viewbox Width="14" Height="14">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M6.5,6.5 L17.5,17.5 M17.5,6.5 L6.5,17.5"
+                                      Fill="Transparent"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1.7"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" Margin="10,9,10,9">
+        <Grid Grid.Row="1" Margin="12,10,12,10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="354" />
-                <ColumnDefinition Width="10" />
-                <ColumnDefinition Width="596" />
-                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="350" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="590" />
+                <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="*" MinWidth="520" />
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="0" />
-                    <RowDefinition Height="0" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="10" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <StackPanel Margin="12,6,0,0" Visibility="Collapsed">
@@ -121,13 +236,12 @@
                 </StackPanel>
 
                 <ScrollViewer Grid.Row="0"
-                              Grid.RowSpan="3"
                               VerticalScrollBarVisibility="Hidden"
                               PanningMode="VerticalFirst">
-                    <Border Style="{StaticResource CardBorderStyle}" Padding="16">
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="16,14">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="任务配置" />
-                            <Border Margin="0,8,0,12"
+                            <Border Margin="0,8,0,14"
                                     Height="1"
                                     Background="{StaticResource OutlineBrush}" />
 
@@ -325,7 +439,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock VerticalAlignment="Center"
                                            Style="{StaticResource SectionTitleTextStyle}"
-                                           FontSize="17"
+                                           FontSize="15"
                                            Text="样本库" />
                                 <Button Grid.Column="1"
                                         Style="{StaticResource InfoIconButtonStyle}"
@@ -338,9 +452,9 @@
                                 <Button Grid.Column="3"
                                         Style="{StaticResource MiniOutlineButtonStyle}"
                                         Command="{Binding RefreshSamplesCommand}"
-                                        Content="预扫描样本" />
+                                        Content="扫描样本" />
                             </Grid>
-                            <WrapPanel Margin="0,0,0,14">
+                            <WrapPanel Margin="0,0,0,14" Visibility="Collapsed">
                                 <Border Style="{StaticResource StatusPillBorderStyle}" Background="{StaticResource SuccessTintBrush}">
                                      <TextBlock Foreground="{StaticResource SuccessBrush}"
                                                 FontSize="12"
@@ -353,27 +467,9 @@
                                                 FontSize="12"
                                                 Text="{Binding SecondarySampleCountText}" />
                                  </Border>
-                                  <Border Margin="8,0,0,0"
-                                          Style="{StaticResource StatusPillBorderStyle}"
-                                          Visibility="{Binding IsContentSafetyTaskActive, Converter={x:Static local:BooleanBoxes.BoolToVisible}}">
-                                      <TextBlock Foreground="{StaticResource PrimaryBrush}"
-                                                 FontSize="12"
-                                                 Text="{Binding AiModelStatusText}" />
-                                 </Border>
-                                 <Border Margin="8,0,0,0"
-                                         Style="{StaticResource StatusPillBorderStyle}"
-                                         Visibility="{Binding IsContentSafetyTaskActive, Converter={x:Static local:BooleanBoxes.BoolToVisible}}">
-                                     <TextBlock Foreground="{StaticResource PrimaryBrush}"
-                                                MaxWidth="240"
-                                                FontSize="12"
-                                                Text="{Binding PersonalAiStatusText}"
-                                                TextTrimming="CharacterEllipsis"
-                                                TextWrapping="NoWrap"
-                                                ToolTip="{Binding PersonalAiStatusText}" />
-                                 </Border>
                              </WrapPanel>
 
-                            <Expander Header="样本文件夹详情" IsExpanded="False" Margin="0,0,0,14">
+                            <Expander Header="样本文件夹详情" IsExpanded="False" Margin="0,0,0,10">
                                 <StackPanel Margin="0,10,0,0">
                                     <UniformGrid Columns="2" Margin="0,0,0,10">
                                          <Button Margin="0,0,6,0"
@@ -630,6 +726,96 @@
                                  </StackPanel>
                              </Border>
                              </Expander>
+                            <Border Margin="0,0,0,10" Height="1" Background="{StaticResource DividerBrush}" />
+                            <StackPanel Margin="0,0,0,4">
+                                <TextBlock Margin="0,0,0,8"
+                                           Style="{StaticResource SectionTitleTextStyle}"
+                                           FontSize="15"
+                                           Text="工作文件夹" />
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource FolderSectionTitleStyle}"
+                                               Text="{Binding SourceFolderTitle}" />
+                                    <Button Grid.Column="1"
+                                            Style="{StaticResource IconOnlyButtonStyle}"
+                                            Command="{Binding AddSourceFolderCommand}"
+                                            ToolTip="添加源文件夹">
+                                        <Viewbox Width="13" Height="13">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Data="M12,5 V19 M5,12 H19"
+                                                      Fill="Transparent"
+                                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                      StrokeThickness="1.8"
+                                                      StrokeStartLineCap="Round"
+                                                      StrokeEndLineCap="Round" />
+                                            </Canvas>
+                                        </Viewbox>
+                                    </Button>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding SourceFolders}"
+                                              ItemTemplate="{StaticResource CompactWorkspaceFolderTemplate}" />
+
+                                <Grid Margin="0,4,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource FolderSectionTitleStyle}"
+                                               Text="{Binding PrimaryTargetTitle}" />
+                                    <Button Grid.Column="1"
+                                            Style="{StaticResource IconOnlyButtonStyle}"
+                                            Command="{Binding AddSfwTargetFolderCommand}"
+                                            ToolTip="{Binding AddPrimaryTargetButtonText}">
+                                        <Viewbox Width="13" Height="13">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Data="M12,5 V19 M5,12 H19"
+                                                      Fill="Transparent"
+                                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                      StrokeThickness="1.8"
+                                                      StrokeStartLineCap="Round"
+                                                      StrokeEndLineCap="Round" />
+                                            </Canvas>
+                                        </Viewbox>
+                                    </Button>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding SfwTargetFolders}"
+                                              ItemTemplate="{StaticResource CompactWorkspaceFolderTemplate}" />
+
+                                <Grid Margin="0,4,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource FolderSectionTitleStyle}"
+                                               Text="{Binding SecondaryTargetTitle}" />
+                                    <Button Grid.Column="1"
+                                            Style="{StaticResource IconOnlyButtonStyle}"
+                                            Command="{Binding AddNsfwTargetFolderCommand}"
+                                            ToolTip="{Binding AddSecondaryTargetButtonText}">
+                                        <Viewbox Width="13" Height="13">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Data="M12,5 V19 M5,12 H19"
+                                                      Fill="Transparent"
+                                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                      StrokeThickness="1.8"
+                                                      StrokeStartLineCap="Round"
+                                                      StrokeEndLineCap="Round" />
+                                            </Canvas>
+                                        </Viewbox>
+                                    </Button>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding NsfwTargetFolders}"
+                                              ItemTemplate="{StaticResource CompactWorkspaceFolderTemplate}" />
+                            </StackPanel>
+
+                            <Expander Header="工作文件夹"
+                                      IsExpanded="False"
+                                      Margin="0"
+                                      Visibility="Collapsed">
+                                <StackPanel Margin="0,10,0,0">
                              <TextBlock Margin="0,0,0,8" FontWeight="SemiBold" Text="{Binding SourceFolderTitle}" />
                             <ItemsControl ItemsSource="{Binding SourceFolders}">
                                 <ItemsControl.ItemTemplate>
@@ -639,7 +825,7 @@
                                                 <Style TargetType="Border" BasedOn="{StaticResource WorkspaceRowBorderStyle}">
                                                     <Setter Property="Background" Value="{StaticResource SurfaceMutedBrush}" />
                                                     <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
-                                                    <Setter Property="Opacity" Value="0.58" />
+                                                    <Setter Property="Opacity" Value="0.72" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsActive}" Value="True">
                                                             <Setter Property="Background" Value="{StaticResource SuccessTintBrush}" />
@@ -655,18 +841,28 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Width="24"
-                                                        Height="18"
-                                                        CornerRadius="3"
-                                                        Background="#FFBE36"
-                                                        VerticalAlignment="Center" />
+                                                <Viewbox Width="24" Height="20" VerticalAlignment="Center">
+                                                    <Canvas Width="24" Height="20">
+                                                        <Path Data="M2,5 H9 L11,7 H22 V18 H2 Z"
+                                                              Fill="#F7B928"
+                                                              Stroke="#E9A814"
+                                                              StrokeThickness="0.8"
+                                                              StrokeLineJoin="Round" />
+                                                        <Path Data="M2,5 V3 H9 L11,5"
+                                                              Fill="#FFD56A"
+                                                              Stroke="#E9A814"
+                                                              StrokeThickness="0.8"
+                                                              StrokeLineJoin="Round" />
+                                                    </Canvas>
+                                                </Viewbox>
                                                 <StackPanel Grid.Column="1">
                                                     <TextBlock FontWeight="SemiBold" Text="{Binding FolderName}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                                                     <TextBlock Margin="0,5,0,0"
                                                                Foreground="{StaticResource InkMutedBrush}"
                                                                FontSize="12"
                                                                Text="{Binding FolderPath}"
-                                                               TextWrapping="Wrap"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               TextWrapping="NoWrap"
                                                                ToolTip="{Binding FolderPath}" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2" Margin="10,0,0,0" VerticalAlignment="Center">
@@ -687,8 +883,9 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Button Margin="0,0,0,12"
-                                    Style="{StaticResource MiniTintButtonStyle}"
+                            <Button Margin="0,0,0,14"
+                                    HorizontalAlignment="Right"
+                                    Style="{StaticResource MiniOutlineButtonStyle}"
                                     Command="{Binding AddSourceFolderCommand}"
                                     Content="添加源文件夹" />
 
@@ -701,7 +898,7 @@
                                                 <Style TargetType="Border" BasedOn="{StaticResource WorkspaceRowBorderStyle}">
                                                     <Setter Property="Background" Value="{StaticResource SurfaceMutedBrush}" />
                                                     <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
-                                                    <Setter Property="Opacity" Value="0.58" />
+                                                    <Setter Property="Opacity" Value="0.72" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsActive}" Value="True">
                                                             <Setter Property="Background" Value="{StaticResource SuccessTintBrush}" />
@@ -717,18 +914,28 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Width="24"
-                                                        Height="18"
-                                                        CornerRadius="3"
-                                                        Background="#FFBE36"
-                                                        VerticalAlignment="Center" />
+                                                <Viewbox Width="24" Height="20" VerticalAlignment="Center">
+                                                    <Canvas Width="24" Height="20">
+                                                        <Path Data="M2,5 H9 L11,7 H22 V18 H2 Z"
+                                                              Fill="#F7B928"
+                                                              Stroke="#E9A814"
+                                                              StrokeThickness="0.8"
+                                                              StrokeLineJoin="Round" />
+                                                        <Path Data="M2,5 V3 H9 L11,5"
+                                                              Fill="#FFD56A"
+                                                              Stroke="#E9A814"
+                                                              StrokeThickness="0.8"
+                                                              StrokeLineJoin="Round" />
+                                                    </Canvas>
+                                                </Viewbox>
                                                 <StackPanel Grid.Column="1">
                                                     <TextBlock FontWeight="SemiBold" Text="{Binding FolderName}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                                                     <TextBlock Margin="0,5,0,0"
                                                                Foreground="{StaticResource InkMutedBrush}"
                                                                FontSize="12"
                                                                Text="{Binding FolderPath}"
-                                                               TextWrapping="Wrap"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               TextWrapping="NoWrap"
                                                                ToolTip="{Binding FolderPath}" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2" Margin="10,0,0,0" VerticalAlignment="Center">
@@ -749,8 +956,9 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Button Margin="0,0,0,12"
-                                    Style="{StaticResource MiniTintButtonStyle}"
+                            <Button Margin="0,0,0,14"
+                                    HorizontalAlignment="Right"
+                                    Style="{StaticResource MiniOutlineButtonStyle}"
                                     Command="{Binding AddSfwTargetFolderCommand}"
                                     Content="{Binding AddPrimaryTargetButtonText}" />
 
@@ -763,7 +971,7 @@
                                                 <Style TargetType="Border" BasedOn="{StaticResource WorkspaceRowBorderStyle}">
                                                     <Setter Property="Background" Value="{StaticResource SurfaceMutedBrush}" />
                                                     <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
-                                                    <Setter Property="Opacity" Value="0.58" />
+                                                    <Setter Property="Opacity" Value="0.72" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsActive}" Value="True">
                                                             <Setter Property="Background" Value="{StaticResource SuccessTintBrush}" />
@@ -779,18 +987,28 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Width="24"
-                                                        Height="18"
-                                                        CornerRadius="3"
-                                                        Background="#FFBE36"
-                                                        VerticalAlignment="Center" />
+                                                <Viewbox Width="24" Height="20" VerticalAlignment="Center">
+                                                    <Canvas Width="24" Height="20">
+                                                        <Path Data="M2,5 H9 L11,7 H22 V18 H2 Z"
+                                                              Fill="#F7B928"
+                                                              Stroke="#E9A814"
+                                                              StrokeThickness="0.8"
+                                                              StrokeLineJoin="Round" />
+                                                        <Path Data="M2,5 V3 H9 L11,5"
+                                                              Fill="#FFD56A"
+                                                              Stroke="#E9A814"
+                                                              StrokeThickness="0.8"
+                                                              StrokeLineJoin="Round" />
+                                                    </Canvas>
+                                                </Viewbox>
                                                 <StackPanel Grid.Column="1">
                                                     <TextBlock FontWeight="SemiBold" Text="{Binding FolderName}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                                                     <TextBlock Margin="0,5,0,0"
                                                                Foreground="{StaticResource InkMutedBrush}"
                                                                FontSize="12"
                                                                Text="{Binding FolderPath}"
-                                                               TextWrapping="Wrap"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               TextWrapping="NoWrap"
                                                                ToolTip="{Binding FolderPath}" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2" Margin="10,0,0,0" VerticalAlignment="Center">
@@ -811,12 +1029,15 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Button Margin="0,0,0,18"
-                                    Style="{StaticResource MiniTintButtonStyle}"
+                            <Button Margin="0,0,0,2"
+                                    HorizontalAlignment="Right"
+                                    Style="{StaticResource MiniOutlineButtonStyle}"
                                     Command="{Binding AddNsfwTargetFolderCommand}"
                                     Content="{Binding AddSecondaryTargetButtonText}" />
+                                </StackPanel>
+                            </Expander>
 
-                            <Grid Margin="0,2,0,0">
+                            <Grid Margin="0,2,0,0" Visibility="Collapsed">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="1.25*" />
                                     <ColumnDefinition Width="1*" />
@@ -902,6 +1123,70 @@
                         </StackPanel>
                     </Border>
                 </ScrollViewer>
+
+                <Border Grid.Row="2"
+                        Padding="12"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource OutlineBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.25*" />
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="1.45*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Margin="0,0,7,0"
+                                Command="{Binding StartAnalysisCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPersonTaskActive}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource PersonTaskBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource PersonTaskBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="13" Height="13" Margin="0,0,6,0" VerticalAlignment="Center">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M8,5 L19,12 L8,19 Z" Fill="White" Stroke="White" StrokeThickness="1" StrokeLineJoin="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="{Binding StartAnalysisButtonText}" TextWrapping="NoWrap" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="1"
+                                Margin="0,0,7,0"
+                                Style="{StaticResource OutlineButtonStyle}"
+                                Command="{Binding StopScanCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="13" Height="13" Margin="0,0,6,0" VerticalAlignment="Center">
+                                    <Canvas Width="24" Height="24">
+                                        <Rectangle Canvas.Left="7" Canvas.Top="5" Width="3.5" Height="14" RadiusX="1" RadiusY="1" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                        <Rectangle Canvas.Left="13.5" Canvas.Top="5" Width="3.5" Height="14" RadiusX="1" RadiusY="1" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="暂停" TextWrapping="NoWrap" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="2"
+                                Style="{StaticResource OutlineButtonStyle}"
+                                Command="{Binding ConfirmMoveCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M4,7.5 H10 L12,10 H20 V18.5 H4 Z" Fill="Transparent" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeLineJoin="Round" />
+                                        <Path Data="M11,14 H17 M14,11 L17,14 L14,17" Fill="Transparent" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="{Binding ConfirmMoveButtonText}" TextWrapping="NoWrap" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
             </Grid>
 
             <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="18,16">
@@ -920,7 +1205,8 @@
                         <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="扫描结果" />
                         <TextBlock Margin="0,6,0,0"
                                    Style="{StaticResource SectionMetaTextStyle}"
-                                   Text="{Binding ResultSubheadline}" />
+                                   Text="{Binding ResultSubheadline}"
+                                   Visibility="Collapsed" />
                     </StackPanel>
 
                     <UniformGrid Grid.Row="2" Columns="5">
@@ -1192,11 +1478,9 @@
                             IsHitTestVisible="False"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            Padding="22,14"
-                            Background="{StaticResource SurfaceSoftBrush}"
-                            BorderBrush="{StaticResource OutlineBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8">
+                            Padding="20"
+                            Background="Transparent"
+                            BorderThickness="0">
                         <Border.Style>
                             <Style TargetType="Border">
                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -1208,8 +1492,37 @@
                             </Style>
                         </Border.Style>
                         <StackPanel>
+                            <Viewbox Width="42" Height="42" HorizontalAlignment="Center">
+                                <Canvas Width="48" Height="48">
+                                    <Rectangle Canvas.Left="7"
+                                               Canvas.Top="9"
+                                               Width="34"
+                                               Height="30"
+                                               RadiusX="5"
+                                               RadiusY="5"
+                                               Fill="{StaticResource SurfaceSoftBrush}"
+                                               Stroke="{StaticResource OutlineStrongBrush}"
+                                               StrokeThickness="1.5" />
+                                    <Path Data="M11,34 L20,25 L26,31 L31,27 L38,34"
+                                          Fill="Transparent"
+                                          Stroke="{StaticResource OutlineStrongBrush}"
+                                          StrokeThickness="2"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" />
+                                    <Ellipse Canvas.Left="15"
+                                             Canvas.Top="15"
+                                             Width="6"
+                                             Height="6"
+                                             Fill="{StaticResource PrimaryTintBrush}"
+                                             Stroke="{StaticResource OutlineStrongBrush}"
+                                             StrokeThickness="1.2" />
+                                </Canvas>
+                            </Viewbox>
                             <TextBlock HorizontalAlignment="Center"
-                                       FontSize="14"
+                                       Margin="0,10,0,0"
+                                       Foreground="{StaticResource InkMutedBrush}"
+                                       FontSize="13"
                                        FontWeight="SemiBold"
                                        Text="等待扫描结果" />
                             <TextBlock Margin="0,6,0,0"
@@ -1217,7 +1530,8 @@
                                        Foreground="{StaticResource InkMutedBrush}"
                                        FontSize="12"
                                        Text="开始扫描后，图片会按表格列表逐步显示在这里。"
-                                       TextWrapping="NoWrap" />
+                                       TextWrapping="NoWrap"
+                                       Visibility="Collapsed" />
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -1246,12 +1560,27 @@
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                             <Grid>
-                                 <Grid.ColumnDefinitions>
-                                     <ColumnDefinition Width="*" />
-                                 </Grid.ColumnDefinitions>
-                                 <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="扫描进度" />
-                             </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="扫描进度" />
+                                <Button Grid.Column="1"
+                                        Padding="8,4"
+                                        Style="{StaticResource MiniOutlineButtonStyle}"
+                                        Command="{Binding StopScanCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Viewbox Width="12" Height="12" Margin="0,0,5,0" VerticalAlignment="Center">
+                                            <Canvas Width="24" Height="24">
+                                                <Rectangle Canvas.Left="7" Canvas.Top="5" Width="3.5" Height="14" RadiusX="1" RadiusY="1" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                                <Rectangle Canvas.Left="13.5" Canvas.Top="5" Width="3.5" Height="14" RadiusX="1" RadiusY="1" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                            </Canvas>
+                                        </Viewbox>
+                                        <TextBlock Text="暂停扫描" TextWrapping="NoWrap" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
 
                             <Grid Grid.Row="2">
                                 <Grid.ColumnDefinitions>
@@ -1475,12 +1804,28 @@
                                                     </StackPanel>
                                                     <Button Grid.Column="4"
                                                             Margin="8,0,0,0"
-                                                            Padding="8,3"
+                                                            Padding="5"
                                                             VerticalAlignment="Top"
-                                                            Style="{StaticResource MiniOutlineButtonStyle}"
                                                             Command="{Binding DataContext.CopyOperationLogCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding}"
-                                                            Content="复制" />
+                                                            ToolTip="复制日志">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource MiniOutlineButtonStyle}">
+                                                                <Setter Property="Opacity" Value="0.2" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
+                                                                        <Setter Property="Opacity" Value="1" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
+                                                        <Viewbox Width="13" Height="13">
+                                                            <Canvas Width="24" Height="24">
+                                                                <Rectangle Canvas.Left="7" Canvas.Top="7" Width="11" Height="12" RadiusX="1.5" RadiusY="1.5" Fill="Transparent" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.8" />
+                                                                <Path Data="M5,16 V5 H16" Fill="Transparent" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                                            </Canvas>
+                                                        </Viewbox>
+                                                    </Button>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
@@ -1510,7 +1855,8 @@
                                 <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="预览与纠正" />
                                 <TextBlock Margin="0,5,0,0"
                                            Style="{StaticResource SectionMetaTextStyle}"
-                                               Text="选择结果后预览图片，并在右侧查看当前判断。" />
+                                           Text="选择结果后预览图片，并在右侧查看当前判断。"
+                                           Visibility="Collapsed" />
                             </StackPanel>
                             <Border Grid.Column="1"
                                      MinWidth="118"
@@ -1555,11 +1901,26 @@
                                     CornerRadius="6"
                                     Padding="12">
                                 <Grid>
-                                    <TextBlock HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               Foreground="{StaticResource InkMutedBrush}"
-                                               Visibility="{Binding SelectedResult, Converter={x:Static local:BooleanBoxes.NullToVisible}}"
-                                               Text="请先在扫描结果中选择一张图片进行预览。" />
+                                    <StackPanel HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Visibility="{Binding SelectedResult, Converter={x:Static local:BooleanBoxes.NullToVisible}}">
+                                        <Viewbox Width="250" Height="170">
+                                            <Canvas Width="300" Height="200">
+                                                <Ellipse Canvas.Left="54"
+                                                         Canvas.Top="20"
+                                                         Width="42"
+                                                         Height="42"
+                                                         Fill="#B9D5F4" />
+                                                <Path Data="M12,177 L104,86 C111,79 121,80 128,89 L155,123 C160,130 169,130 175,123 L221,67 C229,57 239,58 247,68 L288,119 V177 Z"
+                                                      Fill="#A8C9EE" />
+                                            </Canvas>
+                                        </Viewbox>
+                                        <TextBlock Margin="0,14,0,0"
+                                                   HorizontalAlignment="Center"
+                                                   Foreground="{StaticResource InkMutedBrush}"
+                                                   FontSize="12"
+                                                   Text="从扫描结果中选择图片" />
+                                    </StackPanel>
                                     <Image Source="{Binding SelectedResult.PreviewImage}" Stretch="Uniform" />
                                 </Grid>
                             </Border>

@@ -6,6 +6,15 @@ using JudgePicSFW.Services;
 
 var failures = new List<string>();
 
+var imageFingerprintService = new ImageFingerprintService();
+AssertTrue(imageFingerprintService.IsSupportedImage("sample.webp"), "WebP should be included in supported image scanning");
+AssertTrue(imageFingerprintService.IsSupportedImage("sample.HEIC"), "HEIC should be included in supported image scanning");
+AssertTrue(imageFingerprintService.IsSupportedImage("sample.heif"), "HEIF should be included in supported image scanning");
+AssertTrue(ImageDecodeCacheService.RequiresDedicatedDecoder("sample.webp"), "WebP should use the dedicated decoder path");
+AssertTrue(ImageDecodeCacheService.RequiresDedicatedDecoder("sample.heic"), "HEIC should use the dedicated decoder path");
+AssertTrue(ImageDecodeCacheService.RequiresDedicatedDecoder("sample.heif"), "HEIF should use the dedicated decoder path");
+AssertFalse(ImageDecodeCacheService.RequiresDedicatedDecoder("sample.jpg"), "JPG should keep the existing decoder path");
+
 AssertLessThan(
     AiNsfwClassifierService.CalculateNudeDetectionScore(new Dictionary<string, double>
     {

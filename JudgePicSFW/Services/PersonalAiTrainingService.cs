@@ -51,11 +51,15 @@ public sealed class PersonalAiTrainingService
     private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
 
     private readonly PerformanceLogService _performanceLogService;
+    private readonly ImageDecodeCacheService? _imageDecodeCacheService;
     private readonly SemaphoreSlim _processLock = new(1, 1);
 
-    public PersonalAiTrainingService(PerformanceLogService performanceLogService)
+    public PersonalAiTrainingService(
+        PerformanceLogService performanceLogService,
+        ImageDecodeCacheService? imageDecodeCacheService = null)
     {
         _performanceLogService = performanceLogService;
+        _imageDecodeCacheService = imageDecodeCacheService;
     }
 
     private static PersonalAiTaskProfile GetTaskProfile(ClassificationTaskMode taskMode)
@@ -367,8 +371,13 @@ public sealed class PersonalAiTrainingService
 
         var rootFolder = ResolveRootFolder(settings, taskMode);
         Directory.CreateDirectory(rootFolder);
+        var processingPath = _imageDecodeCacheService is null
+            ? normalizedOriginalPath
+            : await _imageDecodeCacheService
+                .ResolveForProcessingAsync(normalizedOriginalPath, ImageDecodeCacheService.DefaultProcessingWidth, cancellationToken)
+                .ConfigureAwait(false) ?? normalizedOriginalPath;
         var assetPath = await Task.Run(
-                () => TryCreateMistakeTrainingAsset(normalizedOriginalPath, rootFolder, contentId, correctedLabel, cancellationToken),
+                () => TryCreateMistakeTrainingAsset(processingPath, rootFolder, contentId, correctedLabel, cancellationToken),
                 cancellationToken)
             .ConfigureAwait(false);
         var trainingPath = string.IsNullOrWhiteSpace(assetPath) ? normalizedOriginalPath : assetPath;
@@ -551,6 +560,33 @@ public sealed class PersonalAiTrainingService
         }
     }
 
+    private async Task<IReadOnlyList<PersonalAiTrainingSample>> ResolveTrainingSamplesForProcessingAsync(
+        IReadOnlyList<PersonalAiTrainingSample> samples,
+        CancellationToken cancellationToken)
+    {
+        if (_imageDecodeCacheService is null || samples.Count == 0)
+        {
+            return samples;
+        }
+
+        var resolvedPaths = await _imageDecodeCacheService
+            .ResolveForProcessingAsync(
+                samples.Select(sample => sample.FilePath).ToList(),
+                ImageDecodeCacheService.DefaultProcessingWidth,
+                cancellationToken)
+            .ConfigureAwait(false);
+        return samples
+            .Select((sample, index) => new PersonalAiTrainingSample
+            {
+                FilePath = resolvedPaths[index],
+                ContentId = sample.ContentId,
+                Label = sample.Label,
+                Source = sample.Source,
+                CreatedAtUtc = sample.CreatedAtUtc,
+            })
+            .ToList();
+    }
+
     public async Task<PersonalAiTrainingStatus> TrainAsync(
         PersonalAiModelSettings? settings,
         CancellationToken cancellationToken,
@@ -596,7 +632,8 @@ public sealed class PersonalAiTrainingService
 
             var jobTimestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
             var filteredDatasetPath = Path.Combine(ResolveJobsFolder(rootFolder), $"train-dataset-{jobTimestamp}.jsonl");
-            await WriteTrainingSamplesAsync(filteredDatasetPath, samples, cancellationToken).ConfigureAwait(false);
+            var processingSamples = await ResolveTrainingSamplesForProcessingAsync(samples, cancellationToken).ConfigureAwait(false);
+            await WriteTrainingSamplesAsync(filteredDatasetPath, processingSamples, cancellationToken).ConfigureAwait(false);
 
             var requestPath = Path.Combine(ResolveJobsFolder(rootFolder), $"train-request-{jobTimestamp}.json");
             var request = new TrainingRequest
@@ -707,6 +744,17 @@ public sealed class PersonalAiTrainingService
             Directory.CreateDirectory(ResolveJobsFolder(rootFolder));
             var requestPath = Path.Combine(ResolveJobsFolder(rootFolder), $"predict-request-{DateTime.Now:yyyyMMdd-HHmmss-fff}.json");
             var outputPath = Path.Combine(ResolveJobsFolder(rootFolder), $"predict-output-{DateTime.Now:yyyyMMdd-HHmmss-fff}.json");
+            var processingPaths = _imageDecodeCacheService is null
+                ? requests.Select(item => item.FilePath).ToList()
+                : await _imageDecodeCacheService
+                    .ResolveForProcessingAsync(
+                        requests.Select(item => item.FilePath).ToList(),
+                        ImageDecodeCacheService.DefaultProcessingWidth,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            var processingRequests = requests
+                .Select((item, index) => (item.ContentId, FilePath: processingPaths[index]))
+                .ToList();
             var payload = new PredictionRequest
             {
                 RootFolder = rootFolder,
@@ -716,7 +764,7 @@ public sealed class PersonalAiTrainingService
                 BatchSize = NormalizePersonalAiPredictionBatchSize(settings.TrainBatchSize),
                 PrimaryLabel = profile.PrimaryToken,
                 SecondaryLabel = profile.SecondaryToken,
-                Images = requests
+                Images = processingRequests
                     .Where(item => !string.IsNullOrWhiteSpace(item.ContentId) && File.Exists(item.FilePath))
                     .GroupBy(item => item.ContentId, StringComparer.OrdinalIgnoreCase)
                     .Select(group => group.First())

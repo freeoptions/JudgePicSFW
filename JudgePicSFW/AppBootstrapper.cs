@@ -11,6 +11,7 @@ public sealed class AppBootstrapper : IDisposable
     private const double ScreenPadding = 24d;
 
     private readonly AppStateStore _appStateStore;
+    private readonly ImageDecodeCacheService _imageDecodeCacheService;
     private readonly ImageFingerprintService _imageFingerprintService;
     private readonly AiNsfwClassifierService _aiNsfwClassifierService;
     private readonly PersonalAiTrainingService _personalAiTrainingService;
@@ -27,17 +28,18 @@ public sealed class AppBootstrapper : IDisposable
     public AppBootstrapper()
     {
         _appStateStore = new AppStateStore();
+        _imageDecodeCacheService = new ImageDecodeCacheService();
         _imageFingerprintService = new ImageFingerprintService();
         _performanceLogService = new PerformanceLogService();
-        _aiNsfwClassifierService = new AiNsfwClassifierService(_performanceLogService);
-        _personalAiTrainingService = new PersonalAiTrainingService(_performanceLogService);
+        _aiNsfwClassifierService = new AiNsfwClassifierService(_performanceLogService, _imageDecodeCacheService);
+        _personalAiTrainingService = new PersonalAiTrainingService(_performanceLogService, _imageDecodeCacheService);
         _fileMoveService = new WindowsShellFileMoveService();
         _workspaceService = new WorkspaceService(_appStateStore, _imageFingerprintService, _aiNsfwClassifierService, _personalAiTrainingService, _fileMoveService, _performanceLogService);
     }
 
     public void Run()
     {
-        _mainViewModel = new MainViewModel(_workspaceService);
+        _mainViewModel = new MainViewModel(_workspaceService, _imageDecodeCacheService);
         _mainWindow = new MainWindow(_mainViewModel);
         _mainWindow.WindowState = WindowState.Maximized;
         _mainWindow.Closing += OnMainWindowClosing;
@@ -76,6 +78,7 @@ public sealed class AppBootstrapper : IDisposable
         _trayIconService?.Dispose();
         _aiNsfwClassifierService.Dispose();
         _mainViewModel?.Dispose();
+        _imageDecodeCacheService.Dispose();
         _trayIconService = null;
         _mainViewModel = null;
     }

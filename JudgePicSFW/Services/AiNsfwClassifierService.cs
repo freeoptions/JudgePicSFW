@@ -64,6 +64,7 @@ public sealed class AiNsfwClassifierService : IDisposable
     ];
 
     private readonly PerformanceLogService? _performanceLogService;
+    private readonly ImageDecodeCacheService? _imageDecodeCacheService;
     private readonly object _classifierSessionLock = new();
     private readonly object _nudeDetectorSessionLock = new();
     private readonly SemaphoreSlim _runSemaphore = new(1, 1);
@@ -79,9 +80,12 @@ public sealed class AiNsfwClassifierService : IDisposable
     private string _lastNudeDetectorLoadError = string.Empty;
     private bool _disposed;
 
-    public AiNsfwClassifierService(PerformanceLogService? performanceLogService = null)
+    public AiNsfwClassifierService(
+        PerformanceLogService? performanceLogService = null,
+        ImageDecodeCacheService? imageDecodeCacheService = null)
     {
         _performanceLogService = performanceLogService;
+        _imageDecodeCacheService = imageDecodeCacheService;
     }
 
     public AiModelStatus GetStatus(AiModelSettings settings)
@@ -164,6 +168,12 @@ public sealed class AiNsfwClassifierService : IDisposable
             return filePaths.Select(_ => CreateUnavailableResult("通用 NSFW 分类模型尚未安装。")).ToList();
         }
 
+        var processingFilePaths = _imageDecodeCacheService is null
+            ? filePaths
+            : await _imageDecodeCacheService
+                .ResolveForProcessingAsync(filePaths, ImageDecodeCacheService.DefaultProcessingWidth, cancellationToken)
+                .ConfigureAwait(false);
+
         await _runSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -177,7 +187,7 @@ public sealed class AiNsfwClassifierService : IDisposable
                 try
                 {
                     var classifierScores = RunCombinedBatch(
-                        filePaths,
+                        processingFilePaths,
                         classifierPath,
                         settings.IsNudeDetectorEnabled && File.Exists(nudeDetectorPath) ? nudeDetectorPath : null,
                         settings.NudeDetectorInputSize,
@@ -194,7 +204,7 @@ public sealed class AiNsfwClassifierService : IDisposable
                         cancellationToken.ThrowIfCancellationRequested();
                         try
                         {
-                            labelScoresByIndex[index] = RunClassifier(filePaths[index], classifierPath, settings);
+                            labelScoresByIndex[index] = RunClassifier(processingFilePaths[index], classifierPath, settings);
                         }
                         catch (Exception exception)
                         {
@@ -209,7 +219,7 @@ public sealed class AiNsfwClassifierService : IDisposable
                     labelScoresByIndex.Values.Any(scores => !scores.ContainsKey("nude.strong_explicit")))
                 {
                     var nudeIndexes = labelScoresByIndex.Keys.OrderBy(index => index).ToList();
-                    var nudePaths = nudeIndexes.Select(index => filePaths[index]).ToList();
+                    var nudePaths = nudeIndexes.Select(index => processingFilePaths[index]).ToList();
                     IReadOnlyList<Dictionary<string, double>> nudeScores;
                     try
                     {

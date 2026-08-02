@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.24.4" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.15.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -11,9 +11,10 @@ namespace JudgePicSFW.ViewModels;
 
 public sealed class MainViewModel : ObservableObject, IDisposable
 {
-    private const int PreviewCacheRadius = 8;
-    private const int PreviewPreloadNeighborCount = 2;
+    private const int PreviewCacheRadius = 0;
+    private const int PreviewPreloadNeighborCount = 0;
     private readonly WorkspaceService _workspaceService;
+    private readonly ImageDecodeCacheService? _imageDecodeCacheService;
     private readonly ICollectionView _resultsView;
     private readonly CancellationTokenSource _lifetimeTokenSource = new();
     private CancellationTokenSource? _settingsSaveDebounceTokenSource;
@@ -28,8 +29,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private string _nsfwTargetFolder = string.Empty;
     private string _statusTitle = "准备就绪";
     private string _statusStageText = "空闲";
-    private string _statusMessage = "先补充样本库，再开始分析源文件夹中的图片。";
-    private string _statusCurrentItem = "缓存会直接复用，新增图片会自动补充学习结果。";
+    private string _statusMessage = "等待开始分析";
+    private string _statusCurrentItem = "--";
     private string _aiModelStatusText = "AI 视觉模型状态待检查。";
     private string _aiModelButtonText = "下载 AI 模型包";
     private string _personalAiStatusText = "个人大模型状态待检查。";
@@ -68,9 +69,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private int _lastGeneralProgressLogCount = -1;
     private string _lastGeneralProgressLogSignature = string.Empty;
 
-    public MainViewModel(WorkspaceService workspaceService)
+    public MainViewModel(WorkspaceService workspaceService, ImageDecodeCacheService? imageDecodeCacheService = null)
     {
         _workspaceService = workspaceService;
+        _imageDecodeCacheService = imageDecodeCacheService;
 
         Results = [];
         SourceFolders = [];
@@ -416,8 +418,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public bool IsNsfwFilterActive => _activeFilter == ResultFilter.Nsfw;
     public bool IsUncertainFilterActive => _activeFilter == ResultFilter.Uncertain;
     public bool IsCorrectedFilterActive => _activeFilter == ResultFilter.Corrected;
-    public string ProgressPercentText => _statusTotalCount > 0 ? $"{Math.Round(ProgressValue * 100d):0}%" : (IsBusy ? "处理中" : "待命");
-    public string ProgressCountText => _statusTotalCount > 0 ? $"{_statusCurrentCount} / {_statusTotalCount}" : "等待任务";
+    public string ProgressPercentText => _statusTotalCount > 0 ? $"{Math.Round(ProgressValue * 100d):0}%" : (IsBusy ? "处理中" : "0%");
+    public string ProgressCountText => _statusTotalCount > 0 ? $"{_statusCurrentCount} / {_statusTotalCount}" : "0 / 0";
     public bool HasProgressNumbers => _statusTotalCount > 0;
     public bool IsStatusBusy => IsBusy;
     public string ResultHeadline => Results.Count == 0 ? "分析结果列表" : $"分析结果列表 · {Results.Count} 张";
@@ -506,7 +508,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             LoadActiveTaskSettings();
 
-            SetStatusSnapshot("准备就绪", "空闲", "缓存已经就绪，可以开始分析。", "你可以继续补充样本库，或者直接对源文件夹生成判断列表。", 0d, 0, 0);
+            SetStatusSnapshot("准备就绪", "空闲", "等待开始分析", "--", 0d, 0, 0);
             RefreshAiModelStatus(settings);
             RefreshPersonalAiStatus(settings);
             RaiseSampleFolderSummaryProperties();
@@ -547,7 +549,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             var resultItems = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return records.Select(record => new AnalysisItemViewModel(record)).ToList();
+                return records.Select(record => new AnalysisItemViewModel(record, _imageDecodeCacheService)).ToList();
             }, cancellationToken);
 
             ReleaseAllResultPreviews();
