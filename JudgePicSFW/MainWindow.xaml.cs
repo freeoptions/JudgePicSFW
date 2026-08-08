@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shell;
@@ -118,9 +119,75 @@ public partial class MainWindow : Window
         {
             if (_viewModel.SelectedResult is not null)
             {
-                ResultsListBox.ScrollIntoView(_viewModel.SelectedResult);
+                CenterSelectedResultInList();
             }
         }, DispatcherPriority.Background);
+    }
+
+    private void CenterSelectedResultInList(int attempt = 0)
+    {
+        var selectedResult = _viewModel.SelectedResult;
+        if (selectedResult is null || !IsLoaded)
+        {
+            return;
+        }
+
+        var itemContainer = ResultsListBox.ItemContainerGenerator.ContainerFromItem(selectedResult) as ListBoxItem;
+        if (itemContainer is null)
+        {
+            ResultsListBox.ScrollIntoView(selectedResult);
+            ScheduleCenteredSelection(attempt);
+            return;
+        }
+
+        var scrollViewer = FindVisualChild<ScrollViewer>(ResultsListBox);
+        if (scrollViewer is null || scrollViewer.ViewportHeight <= 0d)
+        {
+            ScheduleCenteredSelection(attempt);
+            return;
+        }
+
+        var itemIndex = ResultsListBox.ItemContainerGenerator.IndexFromContainer(itemContainer);
+        if (itemIndex < 0)
+        {
+            return;
+        }
+
+        var targetOffset = itemIndex - Math.Max(0d, (scrollViewer.ViewportHeight - 1d) / 2d);
+        scrollViewer.ScrollToVerticalOffset(Math.Clamp(targetOffset, 0d, scrollViewer.ScrollableHeight));
+    }
+
+    private void ScheduleCenteredSelection(int attempt)
+    {
+        if (attempt >= 4)
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.ContextIdle,
+            new Action(() => CenterSelectedResultInList(attempt + 1)));
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent)
+        where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            var descendant = FindVisualChild<T>(child);
+            if (descendant is not null)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 
     private void OnWindowPreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
