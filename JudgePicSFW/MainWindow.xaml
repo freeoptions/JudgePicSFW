@@ -2991,13 +2991,15 @@
             </Border>
         </Grid>
 
-        <Border Panel.ZIndex="50"
+        <Border Grid.Row="1"
+                Panel.ZIndex="50"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Top"
-                Margin="0,22,28,0"
-                Padding="18,12"
+                Margin="0,12,28,0"
+                Padding="14,10"
+                MaxWidth="520"
                 BorderThickness="1"
-                CornerRadius="16"
+                CornerRadius="9"
                 Visibility="{Binding IsToastVisible, Converter={x:Static local:BooleanBoxes.BoolToVisible}}"
                 IsHitTestVisible="False">
             <Border.Style>

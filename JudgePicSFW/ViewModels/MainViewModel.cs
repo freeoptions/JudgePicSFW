@@ -2296,11 +2296,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void ShowToast(string message, OperationLogLevel level)
     {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            _toastTokenSource?.Cancel();
+            IsToastVisible = false;
+            ToastMessage = string.Empty;
+            return;
+        }
+
         _toastTokenSource?.Cancel();
         _toastTokenSource?.Dispose();
         _toastTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeTokenSource.Token);
 
-        ToastMessage = message;
+        ToastMessage = message.Trim();
         ToastLevel = level;
         IsToastVisible = true;
 
