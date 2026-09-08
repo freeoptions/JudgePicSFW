@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Windows.Media.Imaging;
 using System.Windows.Data;
 using JudgePicSFW.Commands;
 using JudgePicSFW.Models;
@@ -21,6 +22,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _activeScanTokenSource;
     private CancellationTokenSource? _toastTokenSource;
     private CancellationTokenSource? _previewLoadTokenSource;
+    private readonly SemaphoreSlim _clipboardWriteGate = new(1, 1);
     private WorkspaceSettings _settings = new();
     private bool _isApplyingTaskSettings;
 
@@ -57,6 +59,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private bool _showPersonalAiCurrentModelState;
     private bool _isToastVisible;
     private AnalysisItemViewModel? _selectedResult;
+    private BitmapImage? _displayedPreviewImage;
     private ResultFilter _activeFilter = ResultFilter.All;
     private ClassificationTaskMode _activeTaskMode = ClassificationTaskMode.ContentSafety;
     private double _progressValue;
@@ -103,10 +106,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         AddSfwSampleFolderCommand = new RelayCommand(() => AddSampleFolder(PrimaryLabel));
         AddNsfwSampleFolderCommand = new RelayCommand(() => AddSampleFolder(SecondaryLabel));
         RemoveSampleFolderCommand = new RelayCommand(parameter => RemoveSampleFolder(parameter as SampleFolderItemViewModel));
-        CopyOperationLogCommand = new RelayCommand(parameter => CopyOperationLog(parameter as OperationLogItemViewModel));
+        CopyOperationLogCommand = new RelayCommand(parameter => StartCopyOperationLog(parameter as OperationLogItemViewModel));
 
-        MarkAsSfwCommand = new AsyncRelayCommand(() => ApplyManualCorrectionAsync(PrimaryLabel), () => CanApplyManualCorrection(PrimaryLabel));
-        MarkAsNsfwCommand = new AsyncRelayCommand(() => ApplyManualCorrectionAsync(SecondaryLabel), () => CanApplyManualCorrection(SecondaryLabel));
+        MarkAsSfwCommand = new AsyncRelayCommand(() => ApplyManualCorrectionAsync(PrimaryLabel), () => CanMarkAsPrimary);
+        MarkAsNsfwCommand = new AsyncRelayCommand(() => ApplyManualCorrectionAsync(SecondaryLabel), () => CanMarkAsSecondary);
         MarkAsUncertainCommand = new AsyncRelayCommand(() => ApplyManualCorrectionAsync(ImageLabel.Uncertain), () => SelectedResult is not null && !IsBusy);
 
         ShowAllCommand = new RelayCommand(() => SetFilter(ResultFilter.All));
@@ -406,6 +409,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    public BitmapImage? DisplayedPreviewImage
+    {
+        get => _displayedPreviewImage;
+        private set => SetProperty(ref _displayedPreviewImage, value);
+    }
+
     public int TotalCount => Results.Count;
     public int SfwCount => Results.Count(item => item.CurrentLabel == PrimaryLabel);
     public int NsfwCount => Results.Count(item => item.CurrentLabel == SecondaryLabel);
@@ -418,6 +427,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public bool IsNsfwFilterActive => _activeFilter == ResultFilter.Nsfw;
     public bool IsUncertainFilterActive => _activeFilter == ResultFilter.Uncertain;
     public bool IsCorrectedFilterActive => _activeFilter == ResultFilter.Corrected;
+    public bool CanMarkAsPrimary => CanApplyManualCorrection(PrimaryLabel);
+    public bool CanMarkAsSecondary => CanApplyManualCorrection(SecondaryLabel);
     public string ProgressPercentText => _statusTotalCount > 0 ? $"{Math.Round(ProgressValue * 100d):0}%" : (IsBusy ? "处理中" : "0%");
     public string ProgressCountText => _statusTotalCount > 0 ? $"{_statusCurrentCount} / {_statusTotalCount}" : "0 / 0";
     public bool HasProgressNumbers => _statusTotalCount > 0;
@@ -464,14 +475,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return false;
         }
 
+        var step = Math.Sign(direction);
+        if (step == 0)
+        {
+            return false;
+        }
+
         var currentIndex = SelectedResult is null ? -1 : visibleResults.IndexOf(SelectedResult);
         var nextIndex = currentIndex < 0
             ? 0
-            : Math.Clamp(currentIndex + Math.Sign(direction), 0, visibleResults.Count - 1);
+            : Math.Clamp(currentIndex + step, 0, visibleResults.Count - 1);
 
         var nextResult = visibleResults[nextIndex];
         if (ReferenceEquals(nextResult, SelectedResult))
         {
+            ShowToast(step > 0 ? "已经是最后一张啦！" : "已经是第一张啦！", OperationLogLevel.Info);
             return false;
         }
 
@@ -1798,6 +1816,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _previewLoadTokenSource?.Cancel();
         _previewLoadTokenSource?.Dispose();
         _previewLoadTokenSource = null;
+        DisplayedPreviewImage = null;
 
         foreach (var result in Results)
         {
@@ -1813,6 +1832,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         if (selectedResult is null)
         {
+            DisplayedPreviewImage = null;
             return;
         }
 
@@ -1825,6 +1845,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         try
         {
             await selectedResult.LoadPreviewAsync(cancellationToken).ConfigureAwait(true);
+            if (!cancellationToken.IsCancellationRequested && ReferenceEquals(SelectedResult, selectedResult))
+            {
+                // Keep the previous image visible until the newly selected image is ready.
+                // This avoids a blank frame while the preview is decoded asynchronously.
+                DisplayedPreviewImage = selectedResult.PreviewImage;
+            }
+
             foreach (var neighbor in GetPreviewPreloadItems(selectedResult))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -2037,6 +2064,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ActivateCandidateModelCommand.RaiseCanExecuteChanged();
         ActivatePersonalAiModelCommand.RaiseCanExecuteChanged();
         StopScanCommand.RaiseCanExecuteChanged();
+        RaisePropertyChanged(nameof(CanMarkAsPrimary));
+        RaisePropertyChanged(nameof(CanMarkAsSecondary));
         MarkAsSfwCommand.RaiseCanExecuteChanged();
         MarkAsNsfwCommand.RaiseCanExecuteChanged();
         MarkAsUncertainCommand.RaiseCanExecuteChanged();
@@ -2276,22 +2305,69 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         };
     }
 
-    private void CopyOperationLog(OperationLogItemViewModel? logItem)
+    private void StartCopyOperationLog(OperationLogItemViewModel? logItem)
     {
         if (logItem is null)
         {
             return;
         }
 
+        _ = CopyOperationLogAsync(logItem);
+    }
+
+    private async Task CopyOperationLogAsync(OperationLogItemViewModel logItem)
+    {
+        var gateAcquired = false;
+
         try
         {
-            System.Windows.Clipboard.SetText(logItem.CopyText);
-            ShowToast("日志已复制", OperationLogLevel.Success);
+            await _clipboardWriteGate.WaitAsync(_lifetimeTokenSource.Token);
+            gateAcquired = true;
+
+            const int maxAttempts = 8;
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    System.Windows.Clipboard.SetText(logItem.CopyText);
+                    ShowToast("日志已复制", OperationLogLevel.Success);
+                    return;
+                }
+                catch (Exception exception) when (IsClipboardTemporarilyUnavailable(exception))
+                {
+                    if (attempt == maxAttempts)
+                    {
+                        break;
+                    }
+
+                    var delayMilliseconds = 60 + (attempt * 60);
+                    await Task.Delay(delayMilliseconds, _lifetimeTokenSource.Token);
+                }
+            }
+
+            ShowToast("复制失败：剪贴板正被其他程序占用，请稍后再试。", OperationLogLevel.Error);
+        }
+        catch (OperationCanceledException) when (_lifetimeTokenSource.IsCancellationRequested)
+        {
         }
         catch (Exception exception)
         {
             ShowToast($"复制失败：{exception.Message}", OperationLogLevel.Error);
         }
+        finally
+        {
+            if (gateAcquired)
+            {
+                _clipboardWriteGate.Release();
+            }
+        }
+    }
+
+    private static bool IsClipboardTemporarilyUnavailable(Exception exception)
+    {
+        const int ClipboardCannotOpenHResult = unchecked((int)0x800401D0);
+        return exception.HResult == ClipboardCannotOpenHResult ||
+               exception.GetBaseException().HResult == ClipboardCannotOpenHResult;
     }
 
     private void ShowToast(string message, OperationLogLevel level)

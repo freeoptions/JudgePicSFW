@@ -14,6 +14,7 @@ public sealed class ImageFingerprintService
     {
         ".jpg",
         ".jpeg",
+        ".jfif",
         ".png",
         ".bmp",
         ".gif",

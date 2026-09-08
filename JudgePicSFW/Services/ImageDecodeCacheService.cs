@@ -9,7 +9,7 @@ namespace JudgePicSFW.Services;
 
 public sealed class ImageDecodeCacheService : IDisposable
 {
-    public const int DefaultPreviewWidth = 420;
+    public const int DefaultPreviewWidth = 1440;
     public const int DefaultProcessingWidth = 1024;
     public const long MaxCacheBytes = 512L * 1024L * 1024L;
 

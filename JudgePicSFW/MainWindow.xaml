@@ -209,7 +209,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="350" />
                 <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="590" />
+                <ColumnDefinition Width="450" />
                 <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="*" MinWidth="520" />
             </Grid.ColumnDefinitions>
@@ -371,12 +371,42 @@
                                 </Button>
                             </UniformGrid>
                             <TextBlock Margin="0,0,0,8" FontWeight="SemiBold" Text="模型选择" />
-                            <Border Margin="0,0,0,10"
-                                    Padding="11,8"
-                                    Background="{StaticResource SurfaceSoftBrush}"
-                                    BorderBrush="{StaticResource OutlineBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="6">
+                            <ToggleButton x:Name="AiModelDetailsToggle"
+                                          Margin="0,0,0,6"
+                                          Padding="11,8"
+                                          Background="{StaticResource SurfaceSoftBrush}"
+                                          BorderBrush="{StaticResource OutlineBrush}"
+                                          BorderThickness="1"
+                                          Foreground="{StaticResource InkBrush}"
+                                          HorizontalContentAlignment="Stretch">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="ToggleChrome"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="6"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                              Content="{TemplateBinding Content}"
+                                                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ToggleChrome" Property="Background" Value="{StaticResource PrimaryTintBrush}" />
+                                                <Setter TargetName="ToggleChrome" Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ToggleChrome" Property="Background" Value="{StaticResource PrimaryTintBrush}" />
+                                                <Setter TargetName="ToggleChrome" Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="ToggleChrome" Property="Opacity" Value="0.82" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -400,10 +430,48 @@
                                                   StrokeThickness="2"
                                                   StrokeStartLineCap="Round"
                                                   StrokeEndLineCap="Round"
-                                                  StrokeLineJoin="Round" />
+                                                  StrokeLineJoin="Round">
+                                                <Path.Style>
+                                                    <Style TargetType="Path">
+                                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}" Value="True">
+                                                                <Setter Property="RenderTransform">
+                                                                    <Setter.Value>
+                                                                        <RotateTransform Angle="180" />
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Path.Style>
+                                            </Path>
                                         </Canvas>
                                     </Viewbox>
                                 </Grid>
+                            </ToggleButton>
+                            <Border Margin="0,0,0,10"
+                                    Padding="10"
+                                    Background="{StaticResource SurfaceSoftBrush}"
+                                    BorderBrush="{StaticResource OutlineBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Visibility="{Binding IsChecked, ElementName=AiModelDetailsToggle, Converter={x:Static local:BooleanBoxes.BoolToVisible}}">
+                                <StackPanel>
+                                    <TextBlock FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Text="当前使用的 AI 模型组合" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="{StaticResource InkMutedBrush}"
+                                               FontSize="12"
+                                               Text="{Binding AiModelStatusText}"
+                                               TextWrapping="Wrap" />
+                                    <Button Margin="0,8,0,0"
+                                            HorizontalAlignment="Left"
+                                            Style="{StaticResource MiniOutlineButtonStyle}"
+                                            Command="{Binding InstallAiModelCommand}"
+                                            Content="{Binding AiModelButtonText}" />
+                                </StackPanel>
                             </Border>
 
                              <Grid Margin="0,0,0,14" Visibility="Collapsed">
@@ -1132,12 +1200,13 @@
                         CornerRadius="8">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.25*" />
-                            <ColumnDefinition Width="1*" />
-                            <ColumnDefinition Width="1.45*" />
+                            <ColumnDefinition Width="1.1*" />
+                            <ColumnDefinition Width="0.8*" />
+                            <ColumnDefinition Width="1.65*" />
                         </Grid.ColumnDefinitions>
                         <Button Grid.Column="0"
                                 Margin="0,0,7,0"
+                                Padding="6,8"
                                 Command="{Binding StartAnalysisCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -1160,6 +1229,7 @@
                         </Button>
                         <Button Grid.Column="1"
                                 Margin="0,0,7,0"
+                                Padding="6,8"
                                 Style="{StaticResource OutlineButtonStyle}"
                                 Command="{Binding StopScanCommand}">
                             <StackPanel Orientation="Horizontal">
@@ -1173,6 +1243,7 @@
                             </StackPanel>
                         </Button>
                         <Button Grid.Column="2"
+                                Padding="6,8"
                                 Style="{StaticResource OutlineButtonStyle}"
                                 Command="{Binding ConfirmMoveCommand}">
                             <StackPanel Orientation="Horizontal">
@@ -1209,13 +1280,12 @@
                                    Visibility="Collapsed" />
                     </StackPanel>
 
-                    <UniformGrid Grid.Row="2" Columns="5">
-                        <Button Margin="0,0,8,0" Padding="0" Command="{Binding ShowAllCommand}">
+                    <WrapPanel Grid.Row="2" HorizontalAlignment="Stretch">
+                        <Button Margin="0,0,8,0" Command="{Binding ShowAllCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource MetricChipButtonStyle}">
                                     <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
                                     <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
-                                    <Setter Property="Height" Value="38" />
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsAllFilterActive}" Value="True">
@@ -1225,17 +1295,16 @@
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
-                            <StackPanel Margin="10,0" HorizontalAlignment="Center" Orientation="Horizontal">
+                            <StackPanel Margin="4,0" HorizontalAlignment="Center" Orientation="Horizontal">
                                 <TextBlock Foreground="{StaticResource PrimaryBrush}" FontSize="13" Text="全部" TextWrapping="NoWrap" />
-                                <TextBlock Margin="6,0,0,0" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBrush}" Text="{Binding TotalCount}" TextWrapping="NoWrap" />
+                                <TextBlock Margin="5,0,0,0" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBrush}" Text="{Binding TotalCount}" TextWrapping="NoWrap" />
                             </StackPanel>
                         </Button>
-                        <Button Margin="0,0,8,0" Padding="0" Command="{Binding ShowSfwCommand}">
+                        <Button Margin="0,0,8,0" Command="{Binding ShowSfwCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource MetricChipButtonStyle}">
                                     <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
                                     <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
-                                    <Setter Property="Height" Value="38" />
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsSfwFilterActive}" Value="True">
@@ -1245,17 +1314,16 @@
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
-                            <StackPanel Margin="10,0" HorizontalAlignment="Center" Orientation="Horizontal">
+                            <StackPanel Margin="4,0" HorizontalAlignment="Center" Orientation="Horizontal">
                                 <TextBlock Foreground="{StaticResource SuccessBrush}" FontSize="13" Text="{Binding PrimaryFilterLabel}" TextWrapping="NoWrap" />
-                                <TextBlock Margin="6,0,0,0" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="{Binding SfwCount}" TextWrapping="NoWrap" />
+                                <TextBlock Margin="5,0,0,0" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="{Binding SfwCount}" TextWrapping="NoWrap" />
                             </StackPanel>
                         </Button>
-                        <Button Margin="0,0,8,0" Padding="0" Command="{Binding ShowNsfwCommand}">
+                        <Button Margin="0,0,8,0" Command="{Binding ShowNsfwCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource MetricChipButtonStyle}">
                                     <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
                                     <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
-                                    <Setter Property="Height" Value="38" />
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsNsfwFilterActive}" Value="True">
@@ -1265,17 +1333,16 @@
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
-                            <StackPanel Margin="10,0" HorizontalAlignment="Center" Orientation="Horizontal">
+                            <StackPanel Margin="4,0" HorizontalAlignment="Center" Orientation="Horizontal">
                                 <TextBlock Foreground="{StaticResource DangerBrush}" FontSize="13" Text="{Binding SecondaryFilterLabel}" TextWrapping="NoWrap" />
-                                <TextBlock Margin="6,0,0,0" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}" Text="{Binding NsfwCount}" TextWrapping="NoWrap" />
+                                <TextBlock Margin="5,0,0,0" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}" Text="{Binding NsfwCount}" TextWrapping="NoWrap" />
                             </StackPanel>
                         </Button>
-                        <Button Margin="0,0,8,0" Padding="0" Command="{Binding ShowUncertainCommand}">
+                        <Button Margin="0,0,8,0" Command="{Binding ShowUncertainCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource MetricChipButtonStyle}">
                                     <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
                                     <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
-                                    <Setter Property="Height" Value="38" />
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsUncertainFilterActive}" Value="True">
@@ -1285,17 +1352,16 @@
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
-                            <StackPanel Margin="10,0" HorizontalAlignment="Center" Orientation="Horizontal">
+                            <StackPanel Margin="4,0" HorizontalAlignment="Center" Orientation="Horizontal">
                                 <TextBlock Foreground="{StaticResource WarningBrush}" FontSize="13" Text="不确定" TextWrapping="NoWrap" />
-                                <TextBlock Margin="6,0,0,0" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource WarningBrush}" Text="{Binding UncertainCount}" TextWrapping="NoWrap" />
+                                <TextBlock Margin="5,0,0,0" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource WarningBrush}" Text="{Binding UncertainCount}" TextWrapping="NoWrap" />
                             </StackPanel>
                         </Button>
-                        <Button Padding="0" Command="{Binding ShowCorrectedCommand}">
+                        <Button Command="{Binding ShowCorrectedCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource MetricChipButtonStyle}">
                                     <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
                                     <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
-                                    <Setter Property="Height" Value="38" />
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsCorrectedFilterActive}" Value="True">
@@ -1305,12 +1371,12 @@
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
-                            <StackPanel Margin="10,0" HorizontalAlignment="Center" Orientation="Horizontal">
+                            <StackPanel Margin="4,0" HorizontalAlignment="Center" Orientation="Horizontal">
                                 <TextBlock Foreground="{StaticResource InkMutedBrush}" FontSize="13" Text="已人工处理" TextWrapping="NoWrap" />
-                                <TextBlock Margin="6,0,0,0" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource InkMutedBrush}" Text="{Binding CorrectedCount}" TextWrapping="NoWrap" />
+                                <TextBlock Margin="5,0,0,0" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource InkMutedBrush}" Text="{Binding CorrectedCount}" TextWrapping="NoWrap" />
                             </StackPanel>
                         </Button>
-                    </UniformGrid>
+                    </WrapPanel>
 
                     <Border Grid.Row="4"
                             Padding="10,0,10,8"
@@ -1318,17 +1384,11 @@
                             BorderThickness="0,0,0,1">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2.6*" />
-                                <ColumnDefinition Width="1.2*" />
-                                <ColumnDefinition Width="0.9*" />
-                                <ColumnDefinition Width="0.9*" />
-                                <ColumnDefinition Width="1.1*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="104" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Foreground="{StaticResource InkMutedBrush}" FontSize="12" Text="文件名" />
                             <TextBlock Grid.Column="1" Foreground="{StaticResource InkMutedBrush}" FontSize="12" Text="分辨率" />
-                            <TextBlock Grid.Column="2" Foreground="{StaticResource InkMutedBrush}" FontSize="12" Text="置信度" />
-                            <TextBlock Grid.Column="3" Foreground="{StaticResource InkMutedBrush}" FontSize="12" Text="结果" />
-                            <TextBlock Grid.Column="4" Foreground="{StaticResource InkMutedBrush}" FontSize="12" Text="来源" />
                         </Grid>
                     </Border>
 
@@ -1346,11 +1406,8 @@
                             <DataTemplate DataType="{x:Type viewModels:AnalysisItemViewModel}">
                                 <Grid MinHeight="34">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2.6*" />
-                                        <ColumnDefinition Width="1.2*" />
-                                        <ColumnDefinition Width="0.9*" />
-                                        <ColumnDefinition Width="0.9*" />
-                                        <ColumnDefinition Width="1.1*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="104" />
                                     </Grid.ColumnDefinitions>
 
                                     <Grid Grid.Column="0" VerticalAlignment="Center">
@@ -1400,74 +1457,6 @@
                                                Foreground="{StaticResource InkMutedBrush}"
                                                FontSize="12"
                                                Text="{Binding ResolutionText}"
-                                               TextTrimming="CharacterEllipsis"
-                                               TextWrapping="NoWrap" />
-                                    <TextBlock Grid.Column="2"
-                                               VerticalAlignment="Center"
-                                               Foreground="{StaticResource InkBrush}"
-                                               FontSize="12"
-                                               Text="{Binding ConfidenceText}"
-                                               TextTrimming="CharacterEllipsis"
-                                               TextWrapping="NoWrap" />
-
-                                    <Border Grid.Column="3"
-                                            Padding="10,4"
-                                            CornerRadius="8"
-                                            HorizontalAlignment="Left"
-                                            VerticalAlignment="Center">
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="Background" Value="{StaticResource SurfaceMutedBrush}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding CurrentLabel}" Value="{x:Static models:ImageLabel.Sfw}">
-                                                        <Setter Property="Background" Value="{StaticResource SuccessTintBrush}" />
-                                                    </DataTrigger>
-                                                     <DataTrigger Binding="{Binding CurrentLabel}" Value="{x:Static models:ImageLabel.Nsfw}">
-                                                         <Setter Property="Background" Value="{StaticResource DangerTintBrush}" />
-                                                     </DataTrigger>
-                                                     <DataTrigger Binding="{Binding CurrentLabel}" Value="{x:Static models:ImageLabel.Person}">
-                                                         <Setter Property="Background" Value="{StaticResource SuccessTintBrush}" />
-                                                     </DataTrigger>
-                                                     <DataTrigger Binding="{Binding CurrentLabel}" Value="{x:Static models:ImageLabel.NonPerson}">
-                                                         <Setter Property="Background" Value="{StaticResource PrimaryTintBrush}" />
-                                                     </DataTrigger>
-                                                      <DataTrigger Binding="{Binding CurrentLabel}" Value="{x:Static models:ImageLabel.Uncertain}">
-                                                          <Setter Property="Background" Value="{StaticResource WarningTintBrush}" />
-                                                      </DataTrigger>
-                                                 </Style.Triggers>
-                                             </Style>
-                                         </Border.Style>
-                                        <TextBlock FontSize="12" Text="{Binding CurrentLabelText}" TextWrapping="NoWrap">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding CurrentLabel}" Value="{x:Static models:ImageLabel.Sfw}">
-                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
-                                                        </DataTrigger>
-                                                         <DataTrigger Binding="{Binding CurrentLabel}" Value="{x:Static models:ImageLabel.Nsfw}">
-                                                             <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
-                                                         </DataTrigger>
-                                                         <DataTrigger Binding="{Binding CurrentLabel}" Value="{x:Static models:ImageLabel.Person}">
-                                                             <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
-                                                         </DataTrigger>
-                                                         <DataTrigger Binding="{Binding CurrentLabel}" Value="{x:Static models:ImageLabel.NonPerson}">
-                                                             <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
-                                                         </DataTrigger>
-                                                          <DataTrigger Binding="{Binding CurrentLabel}" Value="{x:Static models:ImageLabel.Uncertain}">
-                                                              <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
-                                                          </DataTrigger>
-                                                     </Style.Triggers>
-                                                 </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </Border>
-
-                                    <TextBlock Grid.Column="4"
-                                               VerticalAlignment="Center"
-                                               Foreground="{StaticResource InkMutedBrush}"
-                                               FontSize="12"
-                                               Text="{Binding LabelOriginText}"
                                                TextTrimming="CharacterEllipsis"
                                                TextWrapping="NoWrap" />
                                 </Grid>
@@ -1836,14 +1825,12 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}" Padding="18,16,18,30">
+                <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}" Padding="18,12,18,18">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="14" />
+                            <RowDefinition Height="6" />
                             <RowDefinition Height="*" />
-                            <RowDefinition Height="22" />
-                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <Grid>
@@ -1863,21 +1850,21 @@
                                      Margin="16,0,0,0"
                                      HorizontalAlignment="Right"
                                      VerticalAlignment="Top"
-                                     Padding="14,8"
+                                     Padding="10,5"
                                     Background="{StaticResource PrimaryTintBrush}"
                                     BorderBrush="{StaticResource PrimaryBrush}"
                                     BorderThickness="1"
                                     CornerRadius="6">
-                                <StackPanel>
-                                    <TextBlock HorizontalAlignment="Center"
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock VerticalAlignment="Center"
                                                Foreground="{StaticResource InkMutedBrush}"
                                                FontSize="11"
                                                Text="当前图片"
                                                TextWrapping="NoWrap" />
-                                    <TextBlock Margin="0,3,0,0"
-                                               HorizontalAlignment="Center"
+                                    <TextBlock Margin="8,0,0,0"
+                                               VerticalAlignment="Center"
                                                Foreground="{StaticResource PrimaryBrush}"
-                                               FontSize="17"
+                                               FontSize="15"
                                                FontWeight="SemiBold"
                                                Text="{Binding SelectedPreviewPositionText}"
                                                TextWrapping="NoWrap" />
@@ -1889,9 +1876,9 @@
                               Background="Transparent"
                               PreviewMouseWheel="OnReviewAreaPreviewMouseWheel">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1.45*" />
-                                    <ColumnDefinition Width="30" />
-                                    <ColumnDefinition Width="0.9*" />
+                                    <ColumnDefinition Width="2.2*" />
+                                    <ColumnDefinition Width="20" />
+                                    <ColumnDefinition Width="0.65*" />
                                 </Grid.ColumnDefinitions>
 
                             <Border Grid.Column="0"
@@ -1899,7 +1886,7 @@
                                     BorderBrush="{StaticResource OutlineBrush}"
                                     BorderThickness="1"
                                     CornerRadius="6"
-                                    Padding="12">
+                                    Padding="8">
                                 <Grid>
                                     <StackPanel HorizontalAlignment="Center"
                                                 VerticalAlignment="Center"
@@ -1921,7 +1908,9 @@
                                                    FontSize="12"
                                                    Text="从扫描结果中选择图片" />
                                     </StackPanel>
-                                    <Image Source="{Binding SelectedResult.PreviewImage}" Stretch="Uniform" />
+                                    <Image Source="{Binding DisplayedPreviewImage}"
+                                           Stretch="Uniform"
+                                           RenderOptions.BitmapScalingMode="HighQuality" />
                                 </Grid>
                             </Border>
 
@@ -1941,7 +1930,7 @@
 
                                 <Grid Grid.Row="2">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="96" />
+                                        <ColumnDefinition Width="76" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
@@ -1979,124 +1968,118 @@
                                     <TextBlock Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" FontSize="12" Text="{Binding SelectedResult.LabelOriginText, TargetNullValue=--}" />
                                 </Grid>
 
-                                <StackPanel Grid.Row="4">
-                                    <TextBlock Foreground="{StaticResource InkMutedBrush}"
-                                               FontSize="11"
-                                               LineHeight="17"
-                                               Text="{Binding SelectedResult.FilePath, TargetNullValue=选择列表项后，这里会显示图片路径和分析依据。}"
-                                               TextWrapping="Wrap"
-                                               ToolTip="{Binding SelectedResult.FilePath}" />
-                                    <ScrollViewer Margin="0,8,0,0"
-                                                  VerticalScrollBarVisibility="Hidden"
-                                                  PanningMode="VerticalFirst">
-                                        <TextBlock Style="{StaticResource SectionMetaTextStyle}"
-                                                   Text="{Binding SelectedResult.Explanation, TargetNullValue=分析原因会显示在这里。}"
-                                                   TextWrapping="Wrap" />
-                                    </ScrollViewer>
-                                </StackPanel>
+                                <Grid Grid.Row="4">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Foreground="{StaticResource InkMutedBrush}"
+                                                   FontSize="11"
+                                                   LineHeight="17"
+                                                   Text="{Binding SelectedResult.FilePath, TargetNullValue=选择列表项后，这里会显示图片路径和分析依据。}"
+                                                   TextWrapping="Wrap"
+                                                   ToolTip="{Binding SelectedResult.FilePath}" />
+                                        <ScrollViewer Margin="0,8,0,0"
+                                                      VerticalScrollBarVisibility="Hidden"
+                                                      PanningMode="VerticalFirst">
+                                            <TextBlock Style="{StaticResource SectionMetaTextStyle}"
+                                                       Text="{Binding SelectedResult.Explanation, TargetNullValue=分析原因会显示在这里。}"
+                                                       TextWrapping="Wrap" />
+                                        </ScrollViewer>
+                                    </StackPanel>
+
+                                    <UniformGrid Grid.Row="2" Columns="2">
+                                        <Button Margin="0,0,5,0"
+                                                Padding="4,6"
+                                                IsEnabled="{Binding CanMarkAsPrimary}"
+                                                Command="{Binding MarkAsSfwCommand}">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource ReviewActionButtonStyle}">
+                                                    <Setter Property="Background" Value="{StaticResource SuccessTintBrush}" />
+                                                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource SuccessBrush}" />
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter Property="Background" Value="{StaticResource SurfaceMutedBrush}" />
+                                                            <Setter Property="Foreground" Value="{StaticResource InkMutedBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
+                                                            <Setter Property="BorderThickness" Value="1.8" />
+                                                            <Setter Property="ToolTip" Value="当前无法执行：图片已经是 SFW，或任务正在处理中" />
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                                <Viewbox Width="15" Height="15" Margin="0,0,5,0" VerticalAlignment="Center">
+                                                    <Canvas Width="24" Height="24">
+                                                        <Path Data="M12,3 L19,6 V11 C19,15.5 16.2,19.1 12,21 C7.8,19.1 5,15.5 5,11 V6 Z"
+                                                              Fill="Transparent"
+                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                              StrokeThickness="2"
+                                                              StrokeLineJoin="Round" />
+                                                        <Path Data="M8.5,12 L11,14.5 L15.8,9.2"
+                                                              Fill="Transparent"
+                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                              StrokeThickness="2"
+                                                              StrokeStartLineCap="Round"
+                                                              StrokeEndLineCap="Round"
+                                                              StrokeLineJoin="Round" />
+                                                    </Canvas>
+                                                </Viewbox>
+                                                <TextBlock Text="{Binding MarkAsPrimaryButtonText}" TextWrapping="NoWrap" />
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button Margin="5,0,0,0"
+                                                Padding="4,6"
+                                                IsEnabled="{Binding CanMarkAsSecondary}"
+                                                Command="{Binding MarkAsNsfwCommand}">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource ReviewActionButtonStyle}">
+                                                    <Setter Property="Background" Value="{StaticResource DangerTintBrush}" />
+                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter Property="Background" Value="{StaticResource SurfaceMutedBrush}" />
+                                                            <Setter Property="Foreground" Value="{StaticResource InkMutedBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
+                                                            <Setter Property="BorderThickness" Value="1.8" />
+                                                            <Setter Property="ToolTip" Value="当前无法执行：图片已经是 NSFW，或任务正在处理中" />
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                                <Viewbox Width="15" Height="15" Margin="0,0,5,0" VerticalAlignment="Center">
+                                                    <Canvas Width="24" Height="24">
+                                                        <Path Data="M12,3 L19,6 V11 C19,15.5 16.2,19.1 12,21 C7.8,19.1 5,15.5 5,11 V6 Z"
+                                                              Fill="Transparent"
+                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                              StrokeThickness="2"
+                                                              StrokeLineJoin="Round" />
+                                                        <Path Data="M12,8 V13.5"
+                                                              Fill="Transparent"
+                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                              StrokeThickness="2"
+                                                              StrokeStartLineCap="Round"
+                                                              StrokeEndLineCap="Round" />
+                                                        <Ellipse Canvas.Left="11"
+                                                                 Canvas.Top="16"
+                                                                 Width="2"
+                                                                 Height="2"
+                                                                 Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                                    </Canvas>
+                                                </Viewbox>
+                                                <TextBlock Text="{Binding MarkAsSecondaryButtonText}" TextWrapping="NoWrap" />
+                                            </StackPanel>
+                                        </Button>
+                                    </UniformGrid>
+                                </Grid>
                             </Grid>
                         </Grid>
-
-                        <UniformGrid Grid.Row="4" Columns="3" Margin="0,0,0,4">
-                             <Button Margin="0,0,18,0"
-                                     Command="{Binding MarkAsSfwCommand}">
-                                 <Button.Style>
-                                     <Style TargetType="Button" BasedOn="{StaticResource ReviewActionButtonStyle}">
-                                         <Setter Property="Background" Value="{StaticResource SuccessTintBrush}" />
-                                         <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
-                                         <Setter Property="BorderBrush" Value="{StaticResource SuccessBrush}" />
-                                     </Style>
-                                  </Button.Style>
-                                  <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                                      <Viewbox Width="17" Height="17" Margin="0,0,8,0" VerticalAlignment="Center">
-                                          <Canvas Width="24" Height="24">
-                                              <Path Data="M12,3 L19,6 V11 C19,15.5 16.2,19.1 12,21 C7.8,19.1 5,15.5 5,11 V6 Z"
-                                                    Fill="Transparent"
-                                                    Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                    StrokeThickness="2"
-                                                    StrokeLineJoin="Round" />
-                                              <Path Data="M8.5,12 L11,14.5 L15.8,9.2"
-                                                    Fill="Transparent"
-                                                    Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                    StrokeThickness="2"
-                                                    StrokeStartLineCap="Round"
-                                                    StrokeEndLineCap="Round"
-                                                    StrokeLineJoin="Round" />
-                                          </Canvas>
-                                      </Viewbox>
-                                      <TextBlock Text="{Binding MarkAsPrimaryButtonText}" TextWrapping="NoWrap" />
-                                  </StackPanel>
-                              </Button>
-
-                             <Button Margin="0,0,18,0"
-                                     Command="{Binding MarkAsNsfwCommand}">
-                                 <Button.Style>
-                                     <Style TargetType="Button" BasedOn="{StaticResource ReviewActionButtonStyle}">
-                                         <Setter Property="Background" Value="{StaticResource DangerTintBrush}" />
-                                         <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
-                                         <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
-                                     </Style>
-                                  </Button.Style>
-                                  <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                                      <Viewbox Width="17" Height="17" Margin="0,0,8,0" VerticalAlignment="Center">
-                                          <Canvas Width="24" Height="24">
-                                              <Path Data="M12,3 L19,6 V11 C19,15.5 16.2,19.1 12,21 C7.8,19.1 5,15.5 5,11 V6 Z"
-                                                    Fill="Transparent"
-                                                    Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                    StrokeThickness="2"
-                                                    StrokeLineJoin="Round" />
-                                              <Path Data="M12,8 V13.5"
-                                                    Fill="Transparent"
-                                                    Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                    StrokeThickness="2"
-                                                    StrokeStartLineCap="Round"
-                                                    StrokeEndLineCap="Round" />
-                                              <Ellipse Canvas.Left="11"
-                                                       Canvas.Top="16"
-                                                       Width="2"
-                                                       Height="2"
-                                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                                          </Canvas>
-                                      </Viewbox>
-                                      <TextBlock Text="{Binding MarkAsSecondaryButtonText}" TextWrapping="NoWrap" />
-                                  </StackPanel>
-                              </Button>
-
-                            <Button Command="{Binding MarkAsUncertainCommand}">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource ReviewActionButtonStyle}">
-                                        <Setter Property="Background" Value="{StaticResource WarningTintBrush}" />
-                                        <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
-                                        <Setter Property="BorderBrush" Value="{StaticResource WarningBrush}" />
-                                    </Style>
-                                </Button.Style>
-                                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                                    <Viewbox Width="17" Height="17" Margin="0,0,8,0" VerticalAlignment="Center">
-                                        <Canvas Width="24" Height="24">
-                                            <Ellipse Canvas.Left="4"
-                                                     Canvas.Top="4"
-                                                     Width="16"
-                                                     Height="16"
-                                                     Fill="Transparent"
-                                                     Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                     StrokeThickness="2" />
-                                            <Path Data="M9.5,9 C10.1,7.8 11.1,7.2 12.5,7.2 C14,7.2 15,8.1 15,9.5 C15,11.4 12.6,11.7 12.3,13.4"
-                                                  Fill="Transparent"
-                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                  StrokeThickness="2"
-                                                  StrokeStartLineCap="Round"
-                                                  StrokeEndLineCap="Round" />
-                                            <Ellipse Canvas.Left="11.2"
-                                                     Canvas.Top="16"
-                                                     Width="2"
-                                                     Height="2"
-                                                     Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                                        </Canvas>
-                                    </Viewbox>
-                                    <TextBlock Text="{Binding MarkAsUncertainButtonText}" TextWrapping="NoWrap" />
-                                </StackPanel>
-                            </Button>
-                        </UniformGrid>
                     </Grid>
                 </Border>
             </Grid>
@@ -2907,7 +2890,7 @@
                                        Foreground="{StaticResource InkMutedBrush}"
                                        Visibility="{Binding SelectedResult, Converter={x:Static local:BooleanBoxes.NullToVisible}}"
                                        Text="&#35831;&#20808;&#22312;&#24038;&#20391;&#36873;&#25321;&#19968;&#24352;&#22270;&#29255;&#36827;&#34892;&#39044;&#35272;&#12290;" />
-                            <Image Source="{Binding SelectedResult.PreviewImage}" Stretch="Uniform" />
+                            <Image Source="{Binding DisplayedPreviewImage}" Stretch="Uniform" />
                         </Grid>
                     </Border>
 
@@ -2953,8 +2936,9 @@
                             </StackPanel>
                         </Border>
 
-                        <UniformGrid Margin="0,16,0,0" Columns="3">
+                        <UniformGrid Margin="0,16,0,0" Columns="2">
                             <Button Margin="0,0,10,0"
+                                    IsEnabled="{Binding CanMarkAsPrimary}"
                                     Command="{Binding MarkAsSfwCommand}"
                                     Content="{Binding MarkAsPrimaryButtonText}">
                                 <Button.Style>
@@ -2966,6 +2950,7 @@
                             </Button>
 
                             <Button Margin="0,0,10,0"
+                                    IsEnabled="{Binding CanMarkAsSecondary}"
                                     Command="{Binding MarkAsNsfwCommand}"
                                     Content="{Binding MarkAsSecondaryButtonText}">
                                 <Button.Style>
@@ -2976,15 +2961,6 @@
                                 </Button.Style>
                             </Button>
 
-                            <Button Command="{Binding MarkAsUncertainCommand}"
-                                    Content="{Binding MarkAsUncertainButtonText}">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource OutlineButtonStyle}">
-                                        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-                                        <Setter Property="BorderBrush" Value="{StaticResource OutlineBrush}" />
-                                    </Style>
-                                </Button.Style>
-                            </Button>
                         </UniformGrid>
                     </StackPanel>
                 </Grid>
@@ -3021,7 +2997,7 @@
             <TextBlock FontWeight="SemiBold"
                        FontSize="13"
                        Text="{Binding ToastMessage}"
-                       TextWrapping="NoWrap">
+                       TextWrapping="Wrap">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />

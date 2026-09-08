@@ -9,7 +9,7 @@ namespace JudgePicSFW.ViewModels;
 
 public sealed class AnalysisItemViewModel : ObservableObject
 {
-    private const int PreviewDecodePixelWidth = 420;
+    private const int PreviewDecodePixelWidth = ImageDecodeCacheService.DefaultPreviewWidth;
 
     private readonly ImageDecodeCacheService? _imageDecodeCacheService;
     private ImageLabel _currentLabel;
