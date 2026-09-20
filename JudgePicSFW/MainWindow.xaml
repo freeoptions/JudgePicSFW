@@ -1990,9 +1990,11 @@
                                         </ScrollViewer>
                                     </StackPanel>
 
-                                    <UniformGrid Grid.Row="2" Columns="2">
+                                    <UniformGrid Grid.Row="2"
+                                                 Margin="0,0,0,3"
+                                                 Columns="2">
                                         <Button Margin="0,0,5,0"
-                                                Padding="4,6"
+                                                Padding="8,6"
                                                 IsEnabled="{Binding CanMarkAsPrimary}"
                                                 Command="{Binding MarkAsSfwCommand}">
                                             <Button.Style>
@@ -2011,29 +2013,44 @@
                                                     </Style.Triggers>
                                                 </Style>
                                             </Button.Style>
-                                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                                                <Viewbox Width="15" Height="15" Margin="0,0,5,0" VerticalAlignment="Center">
-                                                    <Canvas Width="24" Height="24">
-                                                        <Path Data="M12,3 L19,6 V11 C19,15.5 16.2,19.1 12,21 C7.8,19.1 5,15.5 5,11 V6 Z"
-                                                              Fill="Transparent"
-                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                              StrokeThickness="2"
-                                                              StrokeLineJoin="Round" />
-                                                        <Path Data="M8.5,12 L11,14.5 L15.8,9.2"
-                                                              Fill="Transparent"
-                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                              StrokeThickness="2"
-                                                              StrokeStartLineCap="Round"
-                                                              StrokeEndLineCap="Round"
-                                                              StrokeLineJoin="Round" />
-                                                    </Canvas>
-                                                </Viewbox>
+                                            <StackPanel HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Orientation="Horizontal">
+                                                <Border Width="24"
+                                                        Height="24"
+                                                        Margin="0,0,7,0"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Background="{StaticResource SurfaceBrush}"
+                                                        BorderBrush="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="7">
+                                                    <Viewbox Width="15"
+                                                             Height="15"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center">
+                                                        <Canvas Width="24" Height="24">
+                                                            <Path Data="M12,3 L19,6 V11.2 C19,15.4 16.3,19 12,21 C7.7,19 5,15.4 5,11.2 V6 Z"
+                                                                  Fill="Transparent"
+                                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                  StrokeThickness="2"
+                                                                  StrokeLineJoin="Round" />
+                                                            <Path Data="M8.2,12.1 L10.8,14.7 L15.9,9.2"
+                                                                  Fill="Transparent"
+                                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                  StrokeThickness="2"
+                                                                  StrokeStartLineCap="Round"
+                                                                  StrokeEndLineCap="Round"
+                                                                  StrokeLineJoin="Round" />
+                                                        </Canvas>
+                                                    </Viewbox>
+                                                </Border>
                                                 <TextBlock Text="{Binding MarkAsPrimaryButtonText}" TextWrapping="NoWrap" />
                                             </StackPanel>
                                         </Button>
 
                                         <Button Margin="5,0,0,0"
-                                                Padding="4,6"
+                                                Padding="8,6"
                                                 IsEnabled="{Binding CanMarkAsSecondary}"
                                                 Command="{Binding MarkAsNsfwCommand}">
                                             <Button.Style>
@@ -2052,27 +2069,42 @@
                                                     </Style.Triggers>
                                                 </Style>
                                             </Button.Style>
-                                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                                                <Viewbox Width="15" Height="15" Margin="0,0,5,0" VerticalAlignment="Center">
-                                                    <Canvas Width="24" Height="24">
-                                                        <Path Data="M12,3 L19,6 V11 C19,15.5 16.2,19.1 12,21 C7.8,19.1 5,15.5 5,11 V6 Z"
-                                                              Fill="Transparent"
-                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                              StrokeThickness="2"
-                                                              StrokeLineJoin="Round" />
-                                                        <Path Data="M12,8 V13.5"
-                                                              Fill="Transparent"
-                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                              StrokeThickness="2"
-                                                              StrokeStartLineCap="Round"
-                                                              StrokeEndLineCap="Round" />
-                                                        <Ellipse Canvas.Left="11"
-                                                                 Canvas.Top="16"
-                                                                 Width="2"
-                                                                 Height="2"
-                                                                 Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                                                    </Canvas>
-                                                </Viewbox>
+                                            <StackPanel HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Orientation="Horizontal">
+                                                <Border Width="24"
+                                                        Height="24"
+                                                        Margin="0,0,7,0"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Background="{StaticResource SurfaceBrush}"
+                                                        BorderBrush="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="7">
+                                                    <Viewbox Width="15"
+                                                             Height="15"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center">
+                                                        <Canvas Width="24" Height="24">
+                                                            <Path Data="M12,3 L19,6 V11.2 C19,15.4 16.3,19 12,21 C7.7,19 5,15.4 5,11.2 V6 Z"
+                                                                  Fill="Transparent"
+                                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                  StrokeThickness="2"
+                                                                  StrokeLineJoin="Round" />
+                                                            <Path Data="M12,8.1 V13.3"
+                                                                  Fill="Transparent"
+                                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                  StrokeThickness="2"
+                                                                  StrokeStartLineCap="Round"
+                                                                  StrokeEndLineCap="Round" />
+                                                            <Ellipse Canvas.Left="11"
+                                                                     Canvas.Top="15.5"
+                                                                     Width="2"
+                                                                     Height="2"
+                                                                     Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                                        </Canvas>
+                                                    </Viewbox>
+                                                </Border>
                                                 <TextBlock Text="{Binding MarkAsSecondaryButtonText}" TextWrapping="NoWrap" />
                                             </StackPanel>
                                         </Button>

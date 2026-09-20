@@ -34,12 +34,18 @@ def _install_training_import_stubs():
     pil_image = types.ModuleType("PIL.Image")
     pil_image_file = types.ModuleType("PIL.ImageFile")
     pil_image_file.LOAD_TRUNCATED_IMAGES = False
+    pil_image_ops = types.ModuleType("PIL.ImageOps")
+    pil_image_enhance = types.ModuleType("PIL.ImageEnhance")
     pil_module.Image = pil_image
     pil_module.ImageFile = pil_image_file
+    pil_module.ImageOps = pil_image_ops
+    pil_module.ImageEnhance = pil_image_enhance
     pil_module.UnidentifiedImageError = RuntimeError
     sys.modules.setdefault("PIL", pil_module)
     sys.modules.setdefault("PIL.Image", pil_image)
     sys.modules.setdefault("PIL.ImageFile", pil_image_file)
+    sys.modules.setdefault("PIL.ImageOps", pil_image_ops)
+    sys.modules.setdefault("PIL.ImageEnhance", pil_image_enhance)
 
     peft_module = types.ModuleType("peft")
     peft_module.LoraConfig = object

@@ -5,13 +5,14 @@ import random
 import hashlib
 import sys
 import time
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 import torch
 import torch.nn.functional as F
-from PIL import Image, ImageFile, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageEnhance, ImageFile, ImageOps, UnidentifiedImageError
 from peft import LoraConfig, PeftModel, get_peft_model
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoImageProcessor, AutoModelForImageClassification, ViTImageProcessor, logging as transformers_logging
@@ -41,11 +42,12 @@ class TrainingSample:
 
 
 class PersonalImageDataset(Dataset):
-    def __init__(self, samples, processor, tensor_cache_root=None, tensor_cache_max_bytes=0):
+    def __init__(self, samples, processor, tensor_cache_root=None, tensor_cache_max_bytes=0, training=False):
         self.samples = samples
         self.processor = processor
         self.tensor_cache_root = Path(tensor_cache_root) if tensor_cache_root else None
         self.tensor_cache_max_bytes = int(tensor_cache_max_bytes or 0)
+        self.training = bool(training)
         self.skipped_paths = set()
 
     def __len__(self):
@@ -54,8 +56,11 @@ class PersonalImageDataset(Dataset):
     def __getitem__(self, index):
         sample = self.samples[index]
         try:
-            cache_path = None
-            if self.tensor_cache_root is not None:
+            # Training must decode fresh pixels so augmentation is different on
+            # each epoch. Reusing a tensor cache here would disable augmentation.
+            if self.training or self.tensor_cache_root is None:
+                pixel_values = preprocess_image_tensor(sample.file_path, self.processor, augment=self.training)
+            else:
                 self.tensor_cache_root.mkdir(parents=True, exist_ok=True)
                 cache_path = build_tensor_cache_path(self.tensor_cache_root, sample.file_path, build_sample_cache_fingerprint(sample))
                 if cache_path.exists():
@@ -69,8 +74,6 @@ class PersonalImageDataset(Dataset):
                 else:
                     pixel_values = preprocess_image_tensor(sample.file_path, self.processor)
                     save_tensor_cache(cache_path, pixel_values, self.tensor_cache_root, self.tensor_cache_max_bytes)
-            else:
-                pixel_values = preprocess_image_tensor(sample.file_path, self.processor)
 
             return {
                 "pixel_values": pixel_values,
@@ -150,15 +153,30 @@ def build_checkpoint_manifest(
     }
 
 
-def preprocess_image_tensor(source_path, processor):
+def preprocess_image_tensor(source_path, processor, augment=False):
     with Image.open(source_path) as image:
-        image = prepare_image_for_processor(image)
+        image = prepare_image_for_processor(image, augment=augment)
         encoded = processor(images=image, return_tensors="pt")
     return encoded["pixel_values"].squeeze(0)
 
 
-def prepare_image_for_processor(image):
+def augment_training_image(image):
+    """Apply label-preserving variation without cropping away the subject."""
+    if random.random() < 0.5:
+        image = ImageOps.mirror(image)
+    if random.random() < 0.35:
+        image = ImageEnhance.Brightness(image).enhance(random.uniform(0.92, 1.08))
+    if random.random() < 0.35:
+        image = ImageEnhance.Contrast(image).enhance(random.uniform(0.92, 1.08))
+    if random.random() < 0.2:
+        image = ImageEnhance.Color(image).enhance(random.uniform(0.94, 1.06))
+    return image
+
+
+def prepare_image_for_processor(image, augment=False):
     image = ImageOps.exif_transpose(image).convert("RGB")
+    if augment:
+        image = augment_training_image(image)
     width, height = image.size
     if width <= 0 or height <= 0:
         raise ValueError("image size is invalid")
@@ -588,8 +606,9 @@ def split_samples(samples):
     by_label = {0: [], 1: []}
     for sample in samples:
         by_label[sample.label].append(sample)
+    rng = random.Random(42)
     for values in by_label.values():
-        random.shuffle(values)
+        rng.shuffle(values)
 
     train = []
     validation = []
@@ -600,9 +619,27 @@ def split_samples(samples):
         validation_count = max(1, math.floor(len(label_samples) * 0.12))
         validation.extend(label_samples[:validation_count])
         train.extend(label_samples[validation_count:])
-    random.shuffle(train)
-    random.shuffle(validation)
+    rng.shuffle(train)
+    rng.shuffle(validation)
     return train, validation
+
+
+def apply_class_balance_weights(samples):
+    counts = Counter(sample.label for sample in samples)
+    if len(counts) < 2:
+        return
+
+    total = sum(counts.values())
+    for sample in samples:
+        class_count = max(1, counts.get(sample.label, 0))
+        sample.weight *= total / (2.0 * class_count)
+
+
+def configure_random_seeds(seed=42):
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 def collate_batch(batch):
@@ -639,6 +676,10 @@ def evaluate(model, data_loader, device):
 
 def resolve_lora_target_modules(model):
     module_names = {name.split(".")[-1] for name, _ in model.named_modules()}
+    if {"q_proj", "k_proj", "v_proj"}.issubset(module_names):
+        return ["q_proj", "k_proj", "v_proj"]
+    if {"query", "key", "value"}.issubset(module_names):
+        return ["query", "key", "value"]
     if {"q_proj", "v_proj"}.issubset(module_names):
         return ["q_proj", "v_proj"]
     if {"query", "value"}.issubset(module_names):
@@ -675,7 +716,7 @@ def main():
     request = read_json(sys.argv[1])
     normalize_huggingface_endpoint()
     configure_label_mapping(request)
-    random.seed(42)
+    configure_random_seeds(int(request.get("seed") or 42))
     dataset_path = request["datasetPath"]
     root_folder = Path(request["rootFolder"])
     base_model_id = normalize_base_model_id(request.get("baseModelId"))
@@ -720,11 +761,12 @@ def main():
 
     training_subset_fingerprint = build_training_subset_fingerprint(selected_samples, continue_from_model_path)
     train_samples, validation_samples = split_samples(selected_samples)
+    apply_class_balance_weights(train_samples)
     device_name, device_label = describe_device()
     device = torch.device(device_name)
     is_cuda = str(device).startswith("cuda")
     worker_count, validation_worker_count = resolve_loader_worker_counts(os.cpu_count())
-    cached_sample_count = count_cached_samples(train_samples, tensor_cache_root) + count_cached_samples(validation_samples, tensor_cache_root)
+    cached_sample_count = count_cached_samples(validation_samples, tensor_cache_root)
     resume_checkpoint = choose_resume_checkpoint(checkpoint_root)
     resume_state = load_resume_state(resume_checkpoint) if resume_checkpoint else None
 
@@ -752,12 +794,14 @@ def main():
         train_samples,
         processor,
         tensor_cache_root=tensor_cache_root,
-        tensor_cache_max_bytes=tensor_cache_max_bytes)
+        tensor_cache_max_bytes=tensor_cache_max_bytes,
+        training=True)
     validation_dataset = PersonalImageDataset(
         validation_samples,
         processor,
         tensor_cache_root=tensor_cache_root,
-        tensor_cache_max_bytes=tensor_cache_max_bytes)
+        tensor_cache_max_bytes=tensor_cache_max_bytes,
+        training=False)
     train_loader_options = {
         "batch_size": batch_size,
         "shuffle": True,
@@ -808,7 +852,9 @@ def main():
             resumed_from_checkpoint = resume_epoch > 0 or resume_batch > 0
     model.train()
     total_batches = max(1, len(train_loader))
-    total_steps = max(1, epochs * total_batches)
+    gradient_accumulation_steps = max(1, min(8, math.ceil(8 / max(1, batch_size))))
+    steps_per_epoch = max(1, math.ceil(total_batches / gradient_accumulation_steps))
+    total_steps = max(1, epochs * steps_per_epoch)
     progress_interval = max(1, total_batches // 80)
     training_started_at = time.time()
     last_progress_at = 0.0
@@ -821,6 +867,7 @@ def main():
         "epochs": epochs,
         "totalBatches": total_batches,
         "totalSteps": total_steps,
+        "gradientAccumulationSteps": gradient_accumulation_steps,
         "trainSamples": len(train_samples),
         "validationSamples": len(validation_samples),
         "device": str(device),
@@ -834,7 +881,12 @@ def main():
         "replaySampleCount": len(selection_summary["replaySamples"]),
         "fixedReplaySampleCount": len(selection_summary["fixedReplaySamples"]),
         "isIncremental": selection_summary["isIncremental"],
+        "excludedEvaluationSampleCount": int(request.get("excludedEvaluationSampleCount") or 0),
     })
+
+    best_validation_accuracy = None
+    best_validation_epoch = 0
+    best_model_state = None
 
     for epoch in range(epochs):
         current_epoch = epoch + 1
@@ -843,22 +895,33 @@ def main():
 
         total_loss = 0.0
         batch_count = 0
+        accumulation_batch_count = 0
+        optimizer_step_count = 0
+        optimizer.zero_grad(set_to_none=True)
         for batch_index, batch in enumerate(train_loader, start=1):
             if current_epoch == start_epoch and batch_index <= start_batch:
                 continue
             if batch is None:
                 continue
-            optimizer.zero_grad(set_to_none=True)
             pixel_values = batch["pixel_values"].to(device)
             labels = batch["labels"].to(device)
             weights = batch["weights"].to(device)
             outputs = model(pixel_values=pixel_values)
             losses = F.cross_entropy(outputs.logits, labels, reduction="none")
             loss = (losses * weights).sum() / torch.clamp(weights.sum(), min=1.0)
-            loss.backward()
-            optimizer.step()
+            (loss / gradient_accumulation_steps).backward()
             total_loss += float(loss.detach().cpu())
             batch_count += 1
+            accumulation_batch_count += 1
+
+            should_step = accumulation_batch_count >= gradient_accumulation_steps or batch_index == total_batches
+            if not should_step:
+                continue
+
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+            accumulation_batch_count = 0
+            optimizer_step_count += 1
             save_training_checkpoint(
                 checkpoint_dir=checkpoint_dir,
                 model=model,
@@ -880,7 +943,7 @@ def main():
             now = time.time()
             is_progress_batch = batch_index == 1 or batch_index == total_batches or batch_index % progress_interval == 0
             if is_progress_batch or now - last_progress_at >= 10:
-                completed_steps = ((current_epoch - 1) * total_batches) + batch_index
+                completed_steps = ((current_epoch - 1) * steps_per_epoch) + optimizer_step_count
                 write_event("TRAIN_PROGRESS", {
                     "epoch": current_epoch,
                     "epochs": epochs,
@@ -896,8 +959,34 @@ def main():
                     "resumedFromCheckpoint": resumed_from_checkpoint,
                     "workerCount": worker_count,
                     "cachedSampleCount": cached_sample_count,
+                    "gradientAccumulationSteps": gradient_accumulation_steps,
                 })
                 last_progress_at = now
+
+        # A malformed image can make the last valid batch fall short of the
+        # accumulation boundary. Flush those gradients rather than discarding them.
+        if accumulation_batch_count > 0:
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+            optimizer_step_count += 1
+            save_training_checkpoint(
+                checkpoint_dir=checkpoint_dir,
+                model=model,
+                optimizer=optimizer,
+                base_model_id=base_model_id,
+                epoch=current_epoch,
+                batch=total_batches,
+                total_epochs=epochs,
+                total_batches=total_batches,
+                train_samples=len(train_samples),
+                validation_samples=len(validation_samples),
+                device=device,
+                cached_sample_count=cached_sample_count,
+                dataset_fingerprint=training_subset_fingerprint,
+                continue_from_model_path=continue_from_model_path,
+                new_sample_count=len(selection_summary["newSamples"]),
+                replay_sample_count=len(selection_summary["replaySamples"]),
+            )
 
         if batch_count == 0:
             continue
@@ -920,10 +1009,23 @@ def main():
             new_sample_count=len(selection_summary["newSamples"]),
             replay_sample_count=len(selection_summary["replaySamples"]),
         )
+        epoch_validation_accuracy = evaluate(model, validation_loader, device)
+        if epoch_validation_accuracy is not None and (
+            best_validation_accuracy is None or epoch_validation_accuracy > best_validation_accuracy
+        ):
+            best_validation_accuracy = epoch_validation_accuracy
+            best_validation_epoch = current_epoch
+            best_model_state = {
+                name: value.detach().cpu().clone()
+                for name, value in model.state_dict().items()
+            }
         write_event("TRAIN_EPOCH", {
             "epoch": current_epoch,
             "epochs": epochs,
             "loss": total_loss / max(1, batch_count),
+            "validationAccuracy": epoch_validation_accuracy,
+            "bestValidationAccuracy": best_validation_accuracy,
+            "bestValidationEpoch": best_validation_epoch,
             "skippedImages": len(train_dataset.skipped_paths) + len(validation_dataset.skipped_paths),
             "elapsedSeconds": time.time() - training_started_at,
             "device": str(device),
@@ -932,7 +1034,11 @@ def main():
             "cachedSampleCount": cached_sample_count,
         })
 
-    validation_accuracy = evaluate(model, validation_loader, device)
+    if best_model_state is not None:
+        model.load_state_dict(best_model_state, strict=False)
+        validation_accuracy = best_validation_accuracy
+    else:
+        validation_accuracy = evaluate(model, validation_loader, device)
     version = version_prefix + "-" + datetime.now().strftime("%Y%m%d-%H%M%S")
     models_folder = root_folder / "models"
     model_folder = models_folder / version
@@ -955,6 +1061,10 @@ def main():
         "primaryLabel": ID_TO_LABEL[0],
         "secondaryLabel": ID_TO_LABEL[1],
         "validationAccuracy": validation_accuracy,
+        "bestValidationAccuracy": best_validation_accuracy,
+        "bestValidationEpoch": best_validation_epoch,
+        "gradientAccumulationSteps": gradient_accumulation_steps,
+        "excludedEvaluationSampleCount": int(request.get("excludedEvaluationSampleCount") or 0),
         "device": str(device),
         "deviceDisplay": device_label,
         "continueFromModelPath": continue_from_model_path,

@@ -591,18 +591,35 @@ public sealed class PersonalAiTrainingService
         PersonalAiModelSettings? settings,
         CancellationToken cancellationToken,
         IProgress<WorkspaceProgressInfo>? progress = null,
-        ClassificationTaskMode taskMode = ClassificationTaskMode.ContentSafety)
+        ClassificationTaskMode taskMode = ClassificationTaskMode.ContentSafety,
+        IReadOnlySet<string>? excludedEvaluationContentIds = null)
     {
         var profile = GetTaskProfile(taskMode);
         settings ??= new PersonalAiModelSettings();
         var rootFolder = ResolveRootFolder(settings, taskMode);
         var datasetPath = ResolveDatasetPath(rootFolder);
-        var samples = SelectTrainingSamplesForRequest(
+        var allSamples = SelectTrainingSamplesForRequest(
                 settings,
                 ReadTrainingSamples(datasetPath),
                 requireExistingFiles: true,
                 taskMode: taskMode)
             .ToList();
+        var samples = excludedEvaluationContentIds is { Count: > 0 }
+            ? allSamples
+                .Where(sample => string.IsNullOrWhiteSpace(sample.ContentId) ||
+                                 !excludedEvaluationContentIds.Contains(sample.ContentId))
+                .ToList()
+            : allSamples;
+
+        // Very small datasets cannot support a meaningful held-out set. Keep the
+        // existing minimum-data behavior instead of making first-time training
+        // fail solely because every sample was selected for evaluation.
+        if (samples.Count < 8 ||
+            samples.Count(item => item.Label == profile.PrimaryLabel) < 2 ||
+            samples.Count(item => item.Label == profile.SecondaryLabel) < 2)
+        {
+            samples = allSamples;
+        }
 
         if (!settings.IsEnabled)
         {
@@ -651,6 +668,7 @@ public sealed class PersonalAiTrainingService
                 EnableTensorCache = true,
                 TensorCacheMaxBytes = DefaultTensorCacheMaxBytes,
                 FixedReplayPathMarkers = ["for-training-"],
+                ExcludedEvaluationSampleCount = Math.Max(0, allSamples.Count - samples.Count),
                 PrimaryLabel = profile.PrimaryToken,
                 SecondaryLabel = profile.SecondaryToken,
                 PrimaryLabelValue = (int)profile.PrimaryLabel,
@@ -2326,6 +2344,7 @@ public sealed class PersonalAiTrainingService
         public bool EnableTensorCache { get; init; }
         public long TensorCacheMaxBytes { get; init; }
         public List<string> FixedReplayPathMarkers { get; init; } = [];
+        public int ExcludedEvaluationSampleCount { get; init; }
         public string PrimaryLabel { get; init; } = "sfw";
         public string SecondaryLabel { get; init; } = "nsfw";
         public int PrimaryLabelValue { get; init; } = (int)ImageLabel.Sfw;

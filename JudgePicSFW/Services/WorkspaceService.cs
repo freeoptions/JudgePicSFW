@@ -145,7 +145,21 @@ public sealed class WorkspaceService
                 taskMode)
             .ConfigureAwait(false);
 
-        var status = await _personalAiTrainingService.TrainAsync(activePersonalAiSettings, cancellationToken, progress, taskMode).ConfigureAwait(false);
+        // Freeze the current deterministic evaluation set before building the
+        // training request, then keep those samples out of model fitting.
+        RefreshPersonalAiEvaluationSet(state, settings, sampleFolders);
+        await PersistAsync().ConfigureAwait(false);
+        var evaluationContentIds = GetActivePersonalAiEvaluationSamples(state, taskMode).Values
+            .Where(sample => IsTaskLabel(sample.Label, taskMode) && !string.IsNullOrWhiteSpace(sample.ContentId))
+            .Select(sample => sample.ContentId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var status = await _personalAiTrainingService.TrainAsync(
+                activePersonalAiSettings,
+                cancellationToken,
+                progress,
+                taskMode,
+                evaluationContentIds)
+            .ConfigureAwait(false);
         await EvaluatePersonalAiCandidateAsync(settings, status, cancellationToken, progress).ConfigureAwait(false);
         var prunedModelCount = await _personalAiTrainingService.PruneModelVersionsAsync(activePersonalAiSettings, cancellationToken, taskMode).ConfigureAwait(false);
         if (prunedModelCount > 0)
