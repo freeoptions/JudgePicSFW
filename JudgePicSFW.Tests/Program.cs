@@ -1,4 +1,6 @@
 ﻿using System.Text.Json;
+using System.Globalization;
+using JudgePicSFW;
 using JudgePicSFW.Models;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -15,6 +17,24 @@ AssertTrue(ImageDecodeCacheService.RequiresDedicatedDecoder("sample.webp"), "Web
 AssertTrue(ImageDecodeCacheService.RequiresDedicatedDecoder("sample.heic"), "HEIC should use the dedicated decoder path");
 AssertTrue(ImageDecodeCacheService.RequiresDedicatedDecoder("sample.heif"), "HEIF should use the dedicated decoder path");
 AssertFalse(ImageDecodeCacheService.RequiresDedicatedDecoder("sample.jpg"), "JPG should keep the existing decoder path");
+
+AssertEqual("0.93", FormatConfidence(0.93d), "result confidence should display a plain two-decimal value");
+AssertEqual("--", FormatConfidence(0d), "zero confidence should retain the unavailable-value marker");
+AssertEqual("--", FormatConfidence(-1d), "negative confidence should not display as a valid score");
+AssertEqual("--", FormatConfidence(double.NaN), "invalid confidence should not display a numeric score");
+AssertEqual("--", FormatConfidence(null), "empty selection should retain the unavailable-value marker");
+AssertEqual("0.93", FormatConfidence(0.93d, CultureInfo.GetCultureInfo("fr-FR")), "confidence should keep the reference's decimal-point format");
+
+var thinRingSegments = ((IEnumerable<double>)BooleanBoxes.ProgressToRingDashArray.Convert(
+    0.5d, typeof(object), "49.637", CultureInfo.InvariantCulture)).ToArray();
+AssertLessThan(Math.Abs(thinRingSegments[0] / thinRingSegments[1] - 0.5d), 0.00001d,
+    "the thinner progress ring should represent the actual completion fraction");
+var legacyRingSegments = ((IEnumerable<double>)BooleanBoxes.ProgressToRingDashArray.Convert(
+    0.5d, typeof(object), null, CultureInfo.InvariantCulture)).ToArray();
+AssertEqual(15d, legacyRingSegments[0], "existing progress rings should retain their default geometry");
+
+static string FormatConfidence(object? value, CultureInfo? culture = null) =>
+    (string)BooleanBoxes.ConfidenceToNumber.Convert(value, typeof(string), null, culture ?? CultureInfo.InvariantCulture);
 
 AssertLessThan(
     AiNsfwClassifierService.CalculateNudeDetectionScore(new Dictionary<string, double>

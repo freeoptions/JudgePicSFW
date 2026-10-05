@@ -10,6 +10,15 @@ namespace JudgePicSFW;
 
 public partial class MainWindow : Window
 {
+    public static readonly DependencyProperty IsCompactLayoutProperty = DependencyProperty.Register(
+        nameof(IsCompactLayout), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
+
+    public bool IsCompactLayout
+    {
+        get => (bool)GetValue(IsCompactLayoutProperty);
+        private set => SetValue(IsCompactLayoutProperty, value);
+    }
+
     private readonly MainViewModel _viewModel;
 
     public MainWindow(MainViewModel viewModel)
@@ -23,6 +32,7 @@ public partial class MainWindow : Window
         SnapsToDevicePixels = true;
         Background = (System.Windows.Media.Brush)FindResource("SurfaceBrush");
         StateChanged += OnWindowStateChanged;
+        SizeChanged += OnWindowSizeChanged;
         UpdateWindowChromeForState();
 
         DataContext = viewModel;
@@ -43,6 +53,23 @@ public partial class MainWindow : Window
     {
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         StateChanged -= OnWindowStateChanged;
+        SizeChanged -= OnWindowSizeChanged;
+    }
+
+    private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // ActualWidth is measured in DIP, so the breakpoint follows the available space at any DPI.
+        var compact = ActualWidth < 1500d;
+        if (compact == IsCompactLayout)
+        {
+            return;
+        }
+
+        IsCompactLayout = compact;
+        Resources["ResultResolutionColumnWidth"] = new GridLength(compact ? 90d : 104d);
+        Resources["ResultConfidenceColumnWidth"] = new GridLength(compact ? 54d : 64d);
+        Resources["ResultLabelColumnWidth"] = new GridLength(compact ? 64d : 72d);
+        Resources["ResultOriginColumnWidth"] = new GridLength(compact ? 80d : 88d);
     }
 
     private void OnWindowStateChanged(object? sender, EventArgs e)

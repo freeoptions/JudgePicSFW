@@ -12,6 +12,22 @@ public static class BooleanBoxes
     public static IValueConverter NotNullToVisible { get; } = new NotNullToVisibleConverter();
     public static IValueConverter BoolToVisible { get; } = new BoolToVisibleConverter();
     public static IValueConverter ProgressToRingDashArray { get; } = new ProgressToRingDashArrayConverter();
+    public static IValueConverter ConfidenceToNumber { get; } = new ConfidenceToNumberConverter();
+
+    private sealed class ConfidenceToNumberConverter : IValueConverter
+    {
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            return value is double confidence && double.IsFinite(confidence) && confidence > 0d
+                ? confidence.ToString("0.00", CultureInfo.InvariantCulture)
+                : "--";
+        }
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
+        }
+    }
 
     private sealed class NullToVisibleConverter : IValueConverter
     {
@@ -68,7 +84,12 @@ public static class BooleanBoxes
             };
 
             progress = Math.Clamp(progress, 0d, 1d);
-            return new DoubleCollection { progress * RingLength, RingLength };
+            var ringLength = parameter is string text
+                && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedLength)
+                && double.IsFinite(parsedLength) && parsedLength > 0d
+                    ? parsedLength
+                    : RingLength;
+            return new DoubleCollection { progress * ringLength, ringLength };
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
